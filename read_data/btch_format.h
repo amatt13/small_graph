@@ -52,6 +52,11 @@ namespace katch
 namespace btch_format
 {
 
+#define KATCH_NUMBER_OF_DYN_HISTOGRAMS 96
+
+#define SECONDS_IN_DAY 86400
+#define SECONDS_IN_DYN_HISTOGRAM SECONDS_IN_DAY/KATCH_NUMBER_OF_DYN_HISTOGRAMS
+
 constexpr uint32_t FILE_SEPARATOR = 0x00772255;
 constexpr uint32_t FILE_TERMINATOR = 0xaabbccdd;
 constexpr uint32_t UINT32_MAX_VALUE = std::numeric_limits<uint32_t>::max();
@@ -66,6 +71,13 @@ class OutputFile
     uint32_t _n_nodes;
     uint32_t _current_n_edges;
 
+private:
+    uint64_t calck_time_interval(struct tm time_start) {
+        auto quater_counter = floor(time_start.tm_min/15);
+        auto hour_counter = time_start.tm_hour*4;
+        return quater_counter + hour_counter;
+    }
+
 public:
     OutputFile(const std::string& file_name, const uint32_t& n_nodes, const uint32_t& period, const uint32_t n_edges)
     : _file_output_stream(file_name),
@@ -77,32 +89,7 @@ public:
         if ( _file_name.empty() )
             KATCH_ERROR("Empty output file name given.\n");
 
-        if ( _file_output_stream.good() )
-        {
-            // write version number
-            write_uint32(1);
-
-            // write number of nodes
-            write_uint32(n_nodes);
-
-            // write a place holder for the number of edges
-            write_uint32(n_edges);
-
-            // write period of TTFs
-            write_uint32(period);
-
-            int j = 0;
-            // write a place holder for the level info
-            for ( uint32_t node_id = 0; node_id < n_nodes; ++node_id ) {
-                write_uint32(UINT32_MAX_VALUE);
-                j++;
-            }
-
-            // write separator between level info and edge info
-            write_uint32(FILE_SEPARATOR);
-        }
-        else
-        {
+        if ( !_file_output_stream.good() ) {
             KATCH_ERROR("BTCH output file '" << _file_name << "' not good.\n");
         }
     }
@@ -137,7 +124,6 @@ public:
 
     void close()
     {
-        //TODO something is funky
         if ( ! _file_output_stream.is_open() )
         {
             KATCH_ERROR("Trying to close a non-open BTCH file '" << _file_name << "'.");
@@ -150,85 +136,125 @@ public:
             return;
         }
 
-        // append file terminator
-        write_uint32(FILE_TERMINATOR);
-
-        // store number of edges
-        _file_output_stream.seekp( 6 + 2 * sizeof(uint32_t) );
-        write_uint32(_current_n_edges);
-
         _file_output_stream.close();
     }
 
     // write functions
-    void write_char(const char *value)
+    void write_tab()
+    {
+        _file_output_stream.flush();
+        _file_output_stream << "\t";
+    }
+
+    void write_char(const char *value, bool space = false)
     {
         _file_output_stream.flush();
         _file_output_stream << value;
-        _file_output_stream << " ";
+        if (space)
+            _file_output_stream << " ";
     }
 
-    void write_uint32(const uint32_t value)
+    void write_uint32(const uint32_t value, bool space = false)
     {
         _file_output_stream.flush();
         _file_output_stream << value;
-        _file_output_stream << " ";
+        if (space)
+            _file_output_stream << " ";
     }
 
-    void write_double(const double value)
+    void write_double(const double value, bool space = false)
     {
+        _file_output_stream.flush();
         _file_output_stream << value;
-        _file_output_stream << " ";
+        if (space)
+            _file_output_stream << " ";
     }
 
-    void write_bool(const bool value)
+    void write_bool(const bool value, bool space = false)
     {
+        _file_output_stream.flush();
         _file_output_stream << value;
-        _file_output_stream << " ";
+        if (space)
+            _file_output_stream << " ";
+    }
+
+    void write_newline() {
+        _file_output_stream << "\n";
+    }
+
+    void write_bucket(std::pair<uint32_t, double> value, bool space = false)
+    {
+        _file_output_stream.flush();
+        _file_output_stream << value.first;
+        _file_output_stream << ":";
+        _file_output_stream << value.second;
+        if (space)
+            _file_output_stream << " ";
     }
 
     void write_histogram(const Histogram histogram) {
-        write_uint32(util::get_total_seconds(histogram.get_tp_start())); // start
-        write_uint32(util::get_total_seconds(histogram.get_tp_end())); // end
-        write_uint32(histogram.get_n_measurements()); // n_mes
-        write_bool(histogram.is_constant()); // is_constant
-        write_uint32(histogram.get_bucket_size()); // bucket_size
-        for(auto bucket : histogram.get_buckets()) { // buckets
-            write_char("{");
-            write_uint32(bucket.first); // cost
-            write_double(bucket.second); // prob
-            write_char("}");
+        auto buckets = histogram.get_buckets();
+        write_char("{");
+        write_uint32(calck_time_interval(histogram.get_tp_start()), true);
+        for(auto bucket : buckets) { // buckets
+            write_bucket(bucket);
+            if (*buckets.rbegin() != bucket) {
+                write_char(",", true);
+            }
         }
+        write_char("}", true);
     }
 
-    void write_histcost(const HistCost histCost){
-        write_uint32(histCost.get_upper()); // upper
-        write_uint32(histCost.get_lower()); // lower
-        write_uint32(histCost.get_histograms().size()); // number of histograms
-        for (auto const histogram : histCost.get_histograms()) {
-            write_histogram(histogram);  // histograms
+    void write_histogram_alldata(const Histogram histogram) {
+        auto buckets = histogram.get_buckets();
+        write_char("{");
+        write_uint32(0, true);
+        for(auto bucket : buckets) { // buckets
+            write_bucket(bucket);
+            if (*buckets.rbegin() != bucket) {
+                write_char(",", true);
+            }
         }
+        write_char("}");
     }
-    void write_edgecost(EdgeCost edge, GraphType graph_type, TimeType time_type)
+
+    void write_edgecost(EdgeCost edge, TimeType time_type)
     {
-        write_char("#");
         write_uint32(edge.get_edge_id());   // id
+        write_tab();
         write_uint32(edge.get_source());   // source
+        write_tab();
         write_uint32(edge.get_target());   // target
+        write_tab();
 
         auto histograms = edge.get_cost().get_histograms();
 
         if (time_type == alldata) {
             assert(histograms.size() == 1);
             Histogram allday_histogram = histograms[0];
-            write_histogram(allday_histogram);
-            write_char("\n");
+            write_histogram_alldata(allday_histogram);
+            write_newline();
         }
         else if (time_type == peak) {
-
+            assert(histograms.size() == 6);
+            for (auto i = 0; i < 5; i++) {
+                write_histogram(histograms[i]); // peaks
+            }
+            write_char("#", true);
+            write_histogram(histograms[5]); // weekend
+            write_newline();
         }
         else if (time_type == days) {
-
+            assert(histograms.size() == KATCH_NUMBER_OF_DYN_HISTOGRAMS*2);
+            auto const half_size = histograms.size() / 2;
+            std::vector<Histogram > weekdays(histograms.begin(), histograms.begin() + half_size);
+            std::vector<Histogram > weekends(histograms.begin() + half_size, histograms.end());
+            for (auto hist : weekdays)
+                write_histogram(hist);
+            write_char("#", true);
+            for (auto hist : weekends)
+                write_histogram(hist);
+            write_newline();
         }
         else {
             std::cout << "Invalid time type selected" << std::endl;

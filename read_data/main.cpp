@@ -17,29 +17,55 @@
 using EdgeCost = katch::Edge;
 
 // One histogram for the entire day
-void allday(const std::string &cost_input_file_name, GraphType graph_type) {
+void allday(const std::string &cost_input_file_name) {
     std::cout << "Reading data file" << std::endl;
-    auto edges = katch::hist_format::read_edges(cost_input_file_name, alldata);
+    auto edges_and_type = katch::hist_format::read_edges(cost_input_file_name, alldata);
 
-    std::cout << "Writing ''allday'' with type: " << graph_type << std::endl;
-    katch::btch_format::OutputFile _btch_output_file("/home/anders/Desktop/some_file", (uint32_t)2, (uint32_t)33, 1);
-    for (auto &edge : edges)
-        _btch_output_file.write_edgecost(std::move(edge), graph_type, alldata);
+    std::cout << edges_and_type.second + "_" + "ALL" << std::endl;
+    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "ALL", (uint32_t)2, (uint32_t)33, 1);
+    for (auto &edge : edges_and_type.first)
+        _btch_output_file.write_edgecost(std::move(edge), alldata);
+    _btch_output_file.close();
+
+    std::cout << "Done writing" << std::endl;
+}
+
+/* multiple histograms. 5 for weekdays, 1 for weekends
+ * weekdays: mon-fri
+ *  00:00 - 07:00 off
+ *  07:00 - 08:30 peak
+ *  08:30 - 15:00 off
+ *  15:00 - 17:00 peak
+ *  17:00 - 24:00 off
+ * weekends: sun-sat
+ *  00:00 - 24:00
+*/
+void peak_vs_offpeak(const std::string &cost_input_file_name) {
+    std::cout << "Reading data file" << std::endl;
+    auto edges_and_type = katch::hist_format::read_edges(cost_input_file_name, peak);
+
+    std::cout << edges_and_type.second + "_" + "PEAK" << std::endl;
+    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "PEAK", (uint32_t)2, (uint32_t)33, 1);
+    for (auto &edge : edges_and_type.first)
+        _btch_output_file.write_edgecost(std::move(edge), peak);
     _btch_output_file.close();
 
     std::cout << "Done writing" << std::endl;
 }
 
 
-// multiple(6 or 5?) histograms for both type of days
-void peek_vs_offpeak() {
-    //code
-}
-
-
 // 96 histograms for each of the type of days
-void weekdays_vs_weekends() {
-    //code
+void weekdays_vs_weekends(const std::string &cost_input_file_name) {
+    std::cout << "Reading data file" << std::endl;
+    auto edges_and_type  = katch::hist_format::read_edges(cost_input_file_name, days);
+
+    std::cout << edges_and_type.second + "_" + "15M" << std::endl;
+    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "15M", (uint32_t)2, (uint32_t)33, 1);
+    for (auto &edge : edges_and_type.first)
+        _btch_output_file.write_edgecost(std::move(edge), days);
+    _btch_output_file.close();
+
+    std::cout << "Done writing" << std::endl;
 }
 
 
@@ -47,7 +73,8 @@ void weekdays_vs_weekends() {
 
 int main(int argc, char** argv) {
     auto cost_input_file_name(argv[1]);
-    auto current_type = aalborg;// find
-    allday(cost_input_file_name, current_type);
+    allday(cost_input_file_name);
+    peak_vs_offpeak(cost_input_file_name);
+    weekdays_vs_weekends(cost_input_file_name);
     return 0;
 }

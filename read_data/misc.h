@@ -69,8 +69,17 @@
 #define KATCH_CONTINUE_ERROR(s) if (KATCH_ERROR_VERBOSE) std::cerr << s << std::flush
 #define KATCH_CONTINUE_WARNING(s) if (KATCH_WARNING_VERBOSE) std::cerr << s << std::flush
 
-enum GraphType {aalborg, nort_jutand, denmark, full};
-enum TimeType {alldata, peak, days};
+enum GraphType {aalborg=1, nort_jutand, denmark};
+enum TimeType {alldata=1, peak, days};
+
+             // se mi hr md mo yr wd yd
+struct tm peak1{0, 0, 0, 1, 0, 0, 1, 0};
+struct tm peak2{0, 0, 7, 1, 0, 0, 1, 0};
+struct tm peak3{0, 30, 8, 1, 0, 0, 1, 0};
+struct tm peak4{0, 0, 15, 1, 0, 0, 1, 0};
+struct tm peak5{0, 0, 17, 1, 0, 0, 1, 0};
+struct tm day_end{0, 0, 23, 1, 0, 0, 1, 0};
+struct tm day_start{0, 0, 0, 1, 0, 0, 1, 0};
 
 namespace katch
 {
@@ -99,6 +108,17 @@ using time = struct tm;
             0,  // weekday
             0   // day of year
     };
+
+
+std::string get_location_fromgraphtype(int type) {
+    if (type == aalborg)
+        return "AAl";
+    else if (type == nort_jutand)
+        return "NJ";
+    else if (type == denmark)
+        return "DK";
+    else return "UNKNOWN";
+}
 
 // Check whether a range (of "less" and "equal_to" comparable elements) contains duplicates
 template

@@ -5,10 +5,9 @@ import sys
 from enum import Enum
 
 class GraphType(Enum):
-    full = "0"
-    denmark = "1"
+    denmark = "3"
     north_jutland = "2"
-    aalborg = "3"
+    aalborg = "1"
 
 # Aalborg
 aal_north = 57.079702
@@ -24,9 +23,7 @@ northj_east = 11.432754
 
 
 def get_location_enum(l: str):
-    if l == "full":
-        return GraphType.full
-    elif l == "denmark":
+    if l == "denmark":
         return GraphType.denmark
     elif l == "north_jutland" or l == "jutland" or l == "northJutland":
         return GraphType.north_jutland
@@ -56,10 +53,10 @@ def write_edge_information(data):
                 res_second = "0" + str(data[i][0].second)
             else:
                 res_second = str(data[i][0].second)
-
-            hist = str(location.value + " " + str(data[i][3])) + " " + str(res_hour) + ":" + str(
-                res_minute) + ":" + str(res_second) + "\n"
-            output.write(hist)
+            if data[i][3] <= 200:
+                hist = str(location.value + " " + str(data[i][3])) + " " + str(res_hour) + ":" + str(
+                    res_minute) + ":" + str(res_second) + " " + str(data[i][0].weekday()) + "\n"
+                output.write(hist)
             i += 1
         output.write("}\n")
 
@@ -162,8 +159,9 @@ if __name__ == "__main__":
 
     parallel_duplicates = cur.fetchall()
 
+    #TODO fjern dem der kører hurtigere end 200
+
     # Inside bounds
-    print("start")
     cur.execute("SELECT DISTINCT(r.id) "
                 "FROM road_network r, vertices v "
                 "WHERE r.source_vid = v.id "
@@ -187,7 +185,8 @@ if __name__ == "__main__":
     complete = list(set(res).difference(ignore_list))
 
     while counter < max_count:
-        print(counter)
+        if counter % 1000 == 0:
+            print(counter)
         if counter not in complete:
             counter += 1
             continue
@@ -207,7 +206,6 @@ if __name__ == "__main__":
                           + " " + str(source_target[2]) + "\n"
         output.write(result_string_a)
 
-
         cur.execute(
             "SELECT trips.start_time, trips.end_time, trips.seg_id, trips.travel_time  "
             "FROM trips, road_network "
@@ -225,7 +223,6 @@ if __name__ == "__main__":
         output.write(result_string_b)
         seg_id = str(source_target[1]) + "-" + str(source_target[0])  # target-source
 
-
         cur.execute(
             "SELECT trips.start_time, trips.end_time, trips.seg_id, trips.travel_time "
             "FROM trips "
@@ -234,7 +231,6 @@ if __name__ == "__main__":
         result_b = cur.fetchall()
         write_edge_information(result_b)
         counter += 1
-        print(counter)
     output.flush()
 
     # Handle parallel duplicates. Ignore all but one.
