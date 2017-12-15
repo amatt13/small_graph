@@ -8,16 +8,16 @@
 #include <time.h>
 #include <stdlib.h>
 
-#include "edge_info.h"
 #include "histogram.h"
 #include "edge.h"
 #include "misc.h"
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "hist_cost.h"
 
-#define KATCH_NUMBER_OF_DYN_HISTOGRAMS 96
+#define NUMBER_OF_DYN_HISTOGRAMS 96
 
 #define SECONDS_IN_DAY 86400
-#define SECONDS_IN_DYN_HISTOGRAM SECONDS_IN_DAY/KATCH_NUMBER_OF_DYN_HISTOGRAMS
+#define SECONDS_IN_DYN_HISTOGRAM SECONDS_IN_DAY/NUMBER_OF_DYN_HISTOGRAMS
 
 namespace katch
 {
@@ -37,7 +37,7 @@ namespace katch
 			if(stream.peek() == '#'){
 				std::string line;
 				std::getline(stream, line);
-				KATCH_STATE("TWO # AFTER EACHOTHER." << line << "\n");
+				std::cerr << "TWO # AFTER EACHOTHER." << line << "\n";
 				reached_end = true;
 				gps_measurements.clear();
 				return gps_measurements;
@@ -56,21 +56,17 @@ namespace katch
 				measurement temp_m;
 				if(stream.eof()){ reached_end = true; gps_measurements.clear(); return gps_measurements; }
 				stream >> temp_m.type;
-				KATCH_STATE("Type: " << temp_m.type << "\n");
 				stream.ignore(1, ' ');
 
 				stream >> temp_m.traversal_time;
-				KATCH_STATE("Traversal time: " << temp_m.traversal_time << "\n");
-				stream.ignore(1, ' ');
+                stream.ignore(1, ' ');
 
 				stream.read(buffer, 8);
 
 				util::strptime(buffer, "%H:%M:%S", &temp_m.tm);
-				KATCH_STATE("Buffer: " << temp_m.tm.tm_hour << ":" << temp_m.tm.tm_min << ":" << temp_m.tm.tm_sec << "\n");
                 stream.ignore(1, ' ');
 
                 stream >> temp_m.day_of_week;
-                KATCH_STATE("Day of week: " << temp_m.day_of_week<< "\n");
 
 				gps_measurements.push_back(std::move(temp_m));
 
@@ -91,7 +87,7 @@ namespace katch
             if(stream.peek() == '#'){
                 std::string line;
                 std::getline(stream, line);
-                KATCH_STATE("TWO # AFTER EACHOTHER." << line << "\n");
+                std::cerr << "TWO # AFTER EACHOTHER." << line << "\n";
                 reached_end = true;
                 gps_measurements_weekdays.clear();
                 gps_measurements_weekend.clear();
@@ -117,21 +113,16 @@ namespace katch
                     return std::make_pair(gps_measurements_weekdays, gps_measurements_weekend);
                 }
                 stream >> temp_m.type;
-                KATCH_STATE("Type: " << temp_m.type << "\n");
                 stream.ignore(1, ' ');
 
                 stream >> temp_m.traversal_time;
-                KATCH_STATE("Traversal time: " << temp_m.traversal_time << "\n");
                 stream.ignore(1, ' ');
 
                 stream.read(buffer, 8);
-
                 util::strptime(buffer, "%H:%M:%S", &temp_m.tm);
-                KATCH_STATE("Buffer: " << temp_m.tm.tm_hour << ":" << temp_m.tm.tm_min << ":" << temp_m.tm.tm_sec << "\n");
                 stream.ignore(1, ' ');
 
                 stream >> temp_m.day_of_week;
-                KATCH_STATE("Day of week: " << temp_m.day_of_week<< "\n");
 
                 // 0 is monday, 6 is sunday
                 if (temp_m.day_of_week < 5) {
@@ -167,33 +158,20 @@ namespace katch
 			return result;
 		}
 
-        // Returns whether or not the histograms can be merged
-		using dominance = katch::dominance;  //  { left_dom, right_dom, no_dom }
-        bool can_merge(Histogram * const left, Histogram * const right)
-        {
-            // Check for dominance. Only merge if there are no dominant histogram
-            return dominance::no_dom == katch::stochastic_dominance(left, right);
-        }
-
-
         Histogram create_histogram_peak(std::vector<measurement> measurements, tm start_tm, tm end_tm)
 		{
 			std::map<uint32_t,double> buckets;
 
-			uint32_t number_of_measurements = measurements.size();
-			for (auto i = measurements.begin(); i != measurements.end(); ++i)
-			{
-				if(buckets.find(i->traversal_time) == buckets.end())
-				{
+			auto number_of_measurements = measurements.size();
+			for (auto i = measurements.begin(); i != measurements.end(); ++i) {
+				if(buckets.find(i->traversal_time) == buckets.end()) {
 					buckets[i->traversal_time] = 1;
 				}
-				else
-				{
+				else {
 					buckets[i->traversal_time] ++;
 				}
 			}
-			for (auto i = buckets.begin(); i != buckets.end(); ++i)
-			{
+			for (auto i = buckets.begin(); i != buckets.end(); ++i) {
 				i->second = i->second*100/number_of_measurements;
 			}
 			return Histogram(start_tm, end_tm, number_of_measurements, buckets);
@@ -206,20 +184,16 @@ namespace katch
 
             std::map<uint32_t,double> buckets;
 
-            uint32_t number_of_measurements = measurements.size();
-            for (auto i = measurements.begin(); i != measurements.end(); ++i)
-            {
-                if(buckets.find(i->traversal_time) == buckets.end())
-                {
+            auto number_of_measurements = measurements.size();
+            for (auto i = measurements.begin(); i != measurements.end(); ++i) {
+                if(buckets.find(i->traversal_time) == buckets.end()) {
                     buckets[i->traversal_time] = 1;
                 }
-                else
-                {
+                else {
                     buckets[i->traversal_time] ++;
                 }
             }
-            for (auto i = buckets.begin(); i != buckets.end(); ++i)
-            {
+            for (auto i = buckets.begin(); i != buckets.end(); ++i) {
                 i->second = i->second*100/number_of_measurements;
             }
             return Histogram(start_tm, end_tm, number_of_measurements, buckets);
@@ -227,58 +201,38 @@ namespace katch
 
         Histogram create_histogram_days(std::vector<measurement> measurements, uint32_t index)
         {
-            uint32_t total_sec = index*SECONDS_IN_DYN_HISTOGRAM;
+            auto total_sec = index*SECONDS_IN_DYN_HISTOGRAM;
             tm start_tm = calc_tm(total_sec);
             tm end_tm = calc_tm(total_sec + SECONDS_IN_DYN_HISTOGRAM);
 
             std::map<uint32_t,double> buckets;
 
-            uint32_t number_of_measurements = measurements.size();
-            for (auto i = measurements.begin(); i != measurements.end(); ++i)
-            {
-                if(buckets.find(i->traversal_time) == buckets.end())
-                {
+            auto number_of_measurements = measurements.size();
+            for (auto i = measurements.begin(); i != measurements.end(); ++i) {
+                if(buckets.find(i->traversal_time) == buckets.end()) {
                     buckets[i->traversal_time] = 1;
                 }
-                else
-                {
+                else {
                     buckets[i->traversal_time] ++;
                 }
             }
-            for (auto i = buckets.begin(); i != buckets.end(); ++i)
-            {
+            for (auto i = buckets.begin(); i != buckets.end(); ++i) {
                 i->second = i->second*100/number_of_measurements;
             }
             return Histogram(start_tm, end_tm, number_of_measurements, buckets);
         }
 
-        std::vector<Histogram> merge_qualified_histograms(std::vector<Histogram> const histograms)
-        {
-            // create a copy of the input vector as we will be removing elements as they are merged
-            std::vector<Histogram> merged = histograms;
-            // Go trough the vector backwards
-            for (int i = merged.size(); i >= 2; --i)
-            {
-                if (can_merge(&merged[i-2], &merged[i-1]))
-                {
-                    merged[i-2].merge(merged[i-1]);
-                    merged.erase(merged.begin()+i-1);
-                }
-            }
-            return merged;
-        }
-
-        std::array<std::vector<measurement>, KATCH_NUMBER_OF_DYN_HISTOGRAMS > divide_measurements(std::vector<measurement>& gps_measurements)
+        std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > divide_measurements(std::vector<measurement>& gps_measurements)
 		{
-			std::array<std::vector<measurement>, KATCH_NUMBER_OF_DYN_HISTOGRAMS > measurements_split;
+			std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > measurements_split;
 
-			assert(SECONDS_IN_DAY % KATCH_NUMBER_OF_DYN_HISTOGRAMS == 0);
-            uint32_t divisor = SECONDS_IN_DYN_HISTOGRAM;
+			assert(SECONDS_IN_DAY % NUMBER_OF_DYN_HISTOGRAMS == 0);
+            auto divisor = SECONDS_IN_DYN_HISTOGRAM;
 
 			for (auto it : gps_measurements )
 			{
-				uint32_t secs = it.tm.tm_sec + it.tm.tm_min*60 + it.tm.tm_hour*3600;
-				uint32_t index = floor(secs / divisor);  // using the constant directly results in 0 results
+				auto secs = it.tm.tm_sec + it.tm.tm_min*60 + it.tm.tm_hour*3600;
+				auto index = floor(secs / divisor);  // using the constant directly results in 0 results
 				measurements_split[index].push_back(it);
 			}
 
@@ -301,17 +255,17 @@ namespace katch
          * */
         std::array<std::vector<measurement>, 6 > divide_measurements_peak(std::vector<measurement>& gps_measurements)
         {
-            uint32_t time1 = peak1.tm_sec + peak1.tm_min*60 + peak1.tm_hour*3600;
-            uint32_t time2 = peak2.tm_sec + peak2.tm_min*60 + peak2.tm_hour*3600;
-            uint32_t time3 = peak3.tm_sec + peak3.tm_min*60 + peak3.tm_hour*3600;
-            uint32_t time4 = peak4.tm_sec + peak4.tm_min*60 + peak4.tm_hour*3600;
-            uint32_t time5 = peak5.tm_sec + peak5.tm_min*60 + peak5.tm_hour*3600;
+            auto time1 = peak1.tm_sec + peak1.tm_min*60 + peak1.tm_hour*3600;
+            auto time2 = peak2.tm_sec + peak2.tm_min*60 + peak2.tm_hour*3600;
+            auto time3 = peak3.tm_sec + peak3.tm_min*60 + peak3.tm_hour*3600;
+            auto time4 = peak4.tm_sec + peak4.tm_min*60 + peak4.tm_hour*3600;
+            auto time5 = peak5.tm_sec + peak5.tm_min*60 + peak5.tm_hour*3600;
 
             std::array<std::vector<measurement>, 6 > measurements_split;
 
             for (auto it : gps_measurements )
             {
-                uint32_t secs = it.tm.tm_sec + it.tm.tm_min*60 + it.tm.tm_hour*3600;
+                auto secs = it.tm.tm_sec + it.tm.tm_min*60 + it.tm.tm_hour*3600;
 
                 if (it.day_of_week == 5 || it.day_of_week == 6) {
                     measurements_split[5].push_back(it); //weekend
@@ -342,14 +296,14 @@ namespace katch
             std::vector<measurement> gps_measurements_weekdays;
             std::vector<measurement> gps_measurements_weekends;
             std::vector<Histogram> histograms;
-            std::array<std::vector<measurement>, KATCH_NUMBER_OF_DYN_HISTOGRAMS > measurements_split_weekdays;
-            std::array<std::vector<measurement>, KATCH_NUMBER_OF_DYN_HISTOGRAMS > measurements_split_weekends;
+            std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > measurements_split_weekdays;
+            std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > measurements_split_weekends;
 
             int type = -1;
             while(!input_hist_file.eof() && input_hist_file.good() && !reached_end)
             {
                 input_hist_file.ignore(256, '#');
-                Edge edge;
+                Edge edge{};
 
                 uint32_t edge_id;
                 uint32_t start_node;
@@ -361,10 +315,6 @@ namespace katch
                 input_hist_file >> target_node;
                 input_hist_file >> avgcost;
                 input_hist_file.ignore(2, '\n'); // Ignore '\n'
-                KATCH_STATE("edge_id: " << edge_id << "\n");
-                KATCH_STATE("start_node: " << start_node << "\n");
-                KATCH_STATE("target_node: " << target_node << "\n");
-                KATCH_STATE("avg_cost: " << avgcost << "\n");
 
                 edge.set_edge_id(edge_id);
                 edge.set_source(start_node);
@@ -373,13 +323,11 @@ namespace katch
                 gps_measurements_weekdays.clear();
                 gps_measurements_weekends.clear();
                 if (input_hist_file.peek() == '{' && !reached_end){
-                    KATCH_STATE("Peeked and found no # \n");
                     auto mess = ReadMeasurements_days(input_hist_file, reached_end);
                     gps_measurements_weekdays = mess.first;
                     gps_measurements_weekends = mess.second;
                     if(input_hist_file.eof()){reached_end = true; continue;}
                 }
-                KATCH_STATE("Done reading measurements for this node.\n");
                 if (gps_measurements_weekdays.size() != 0) {
                     type = gps_measurements_weekdays[0].type;
                 } else if (gps_measurements_weekends.size() != 0) {
@@ -418,27 +366,26 @@ namespace katch
                 edge.set_cost( HistCost(histograms));
                 result.push_back(std::move(edge));
                 amount_of_edges ++;
-                KATCH_STATE("NUMBER OF EDGES: " << amount_of_edges << "\n");
             }
-            KATCH_STATUS("Amount of edges: " << amount_of_edges << " \n");
-
+            std::cout << "Amount of edges: " << amount_of_edges << " \n";
             return std::make_pair(std::move(result), util::get_location_fromgraphtype(type));
         }
 
+        // read edges and construct peak histograms
         std::pair<std::vector<Edge>, std::string> read_edges_peak(std::ifstream& input_hist_file) {
             std::vector<Edge> result;
             bool reached_end = false;
-            uint32_t amount_of_edges = 0;
+            auto amount_of_edges = 0;
 
             std::vector<measurement> gps_measurements;
             std::vector<Histogram> histograms;
             std::array<std::vector<measurement>, 6 > measurements_split;
 
-            int type = -1;
+            auto type = -1;
             while(!input_hist_file.eof() && input_hist_file.good() && !reached_end)
             {
                 input_hist_file.ignore(256, '#');
-                Edge edge;
+                Edge edge{};
 
                 uint32_t edge_id;
                 uint32_t start_node;
@@ -450,10 +397,6 @@ namespace katch
                 input_hist_file >> target_node;
                 input_hist_file >> avgcost;
                 input_hist_file.ignore(2, '\n'); // Ignore '\n'
-                KATCH_STATE("edge_id: " << edge_id << "\n");
-                KATCH_STATE("start_node: " << start_node << "\n");
-                KATCH_STATE("target_node: " << target_node << "\n");
-                KATCH_STATE("avg_cost: " << avgcost << "\n");
 
                 edge.set_edge_id(edge_id);
                 edge.set_source(start_node);
@@ -461,18 +404,15 @@ namespace katch
 
                 gps_measurements.clear();
                 if (input_hist_file.peek() == '{' && !reached_end){
-                    KATCH_STATE("Peeked and found no # \n");
                     gps_measurements = ReadMeasurements(input_hist_file, reached_end);
                     if(input_hist_file.eof()){reached_end = true; continue;}
                 }
-                KATCH_STATE("Done reading measurements for this node.\n");
 
                 if (gps_measurements.size() != 0) {
                     type = gps_measurements[0].type;
                 }
                 measurements_split = divide_measurements_peak(gps_measurements);
                 histograms.clear();
-                uint32_t index = 0;
 
                 for(auto i = 0; i <= 5; i++){
                     if( measurements_split[i].size() == 0){
@@ -506,25 +446,25 @@ namespace katch
                 edge.set_cost( HistCost(histograms));
                 result.push_back(std::move(edge));
                 amount_of_edges ++;
-                KATCH_STATE("NUMBER OF EDGES: " << amount_of_edges << "\n");
             }
-            KATCH_STATUS("Amount of edges: " << amount_of_edges << " \n");
+            std::cout << "Amount of edges: " << amount_of_edges << " \n";
             return std::make_pair(std::move(result), util::get_location_fromgraphtype(type));
         }
 
+        // read edges and construct alldata histograms
         std::pair<std::vector<Edge>, std::string> read_edges_alldata(std::ifstream& input_hist_file) {
             std::vector<Edge> result;
             bool reached_end = false;
             uint32_t amount_of_edges = 0;
 
             std::vector<measurement> gps_measurements;
-            std::array<std::vector<measurement>, KATCH_NUMBER_OF_DYN_HISTOGRAMS > measurements_split;
+            std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > measurements_split;
 
-            int type = -1;
+            auto type = -1;
             while(!input_hist_file.eof() && input_hist_file.good() && !reached_end)
             {
                 input_hist_file.ignore(256, '#');
-                Edge edge;
+                Edge edge{};
 
                 uint32_t edge_id;
                 uint32_t start_node;
@@ -535,11 +475,7 @@ namespace katch
                 input_hist_file >> start_node;
                 input_hist_file >> target_node;
                 input_hist_file >> avgcost;
-                input_hist_file.ignore(2, '\n'); // Ignore '\n'
-                KATCH_STATE("edge_id: " << edge_id << "\n");
-                KATCH_STATE("start_node: " << start_node << "\n");
-                KATCH_STATE("target_node: " << target_node << "\n");
-                KATCH_STATE("avg_cost: " << avgcost << "\n");
+                input_hist_file.ignore(2, '\n'); // Ignore '\n'n");
 
                 edge.set_edge_id(edge_id);
                 edge.set_source(start_node);
@@ -547,11 +483,9 @@ namespace katch
 
                 gps_measurements.clear();
                 if (input_hist_file.peek() == '{' && !reached_end){
-                    KATCH_STATE("Peeked and found no # \n");
                     gps_measurements = ReadMeasurements(input_hist_file, reached_end);
                     if(input_hist_file.eof()){reached_end = true; continue;}
                 }
-                KATCH_STATE("Done reading measurements for this node.\n");
 
                 if(gps_measurements.size() == 0) {
                     measurement temp;
@@ -562,13 +496,12 @@ namespace katch
                 else {
                     type = gps_measurements[0].type;
                 }
-                Histogram hist = create_histogram_alldata(gps_measurements);
+                auto hist = create_histogram_alldata(gps_measurements);
                 edge.set_cost( HistCost(hist));
                 result.push_back(std::move(edge));
                 amount_of_edges ++;
-                KATCH_STATE("NUMBER OF EDGES: " << amount_of_edges << "\n");
             }
-            KATCH_STATUS("Amount of edges: " << amount_of_edges << " \n");
+            std::cout << "Amount of edges: " << amount_of_edges << " \n";
             return std::make_pair(std::move(result), util::get_location_fromgraphtype(type));
         }
 
@@ -577,25 +510,27 @@ namespace katch
             std::ifstream input_hist_file(input_file_name);
             std::vector<Edge> result;
 
-			if (input_file_name == "")
-			{
-				KATCH_ERROR("Empty input file name given.\n");
+			if (input_file_name.empty()) {
+                std::cerr << "Empty input file name given.\n";
+				return std::make_pair(std::move(result), util::get_location_fromgraphtype(-1));
+			}
+			if (!input_hist_file.is_open()) {
+                std::cerr << " ABORT\n";
+                std::cout << "Unable to open file '" << input_file_name << "'\n";
 				return std::make_pair(std::move(result), util::get_location_fromgraphtype(-1));
 			}
 
-			if (!input_hist_file.is_open())
-			{
-				KATCH_CONTINUE_STATUS(" ABORT\n");
-				KATCH_ERROR("Unable to open file '" << input_file_name << "'\n");
-				return std::make_pair(std::move(result), util::get_location_fromgraphtype(-1));
-			}
+            // file is OK. Start reading it
             if (time_type == alldata) {
+                std::cout << "reading alldata"<< std::endl;
                 return read_edges_alldata(input_hist_file);
             }
             else if (time_type == peak) {
+                std::cout << "reading peak"<< std::endl;
                 return read_edges_peak(input_hist_file);
             }
             else if (time_type == days) {
+                std::cout << "reading days"<< std::endl;
                 return read_edges_days(input_hist_file);
             }
             else {

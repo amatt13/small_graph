@@ -39,8 +39,8 @@ public:
         _n_original_edges = other.get_n_original_edges();
         cost = other.get_cost_pointer();
         other.reset();
-        // TODO: consider returning self
     }
+
     // Constructors
     Edge(Edge&& other)
     : _edge_id(other.get_edge_id()), _source_node(other.get_source()), 
@@ -73,20 +73,13 @@ public:
     }
 
     // Empty constructor
-    Edge()
-    {
-        cost = new HistCost();
-    }
-    ~Edge(){
-        if(cost != nullptr) delete cost;
-    }
+    Edge() = default;
+
+    ~Edge() = default;
 
     unsigned int get_n_original_edges()const {
         return _n_original_edges;
     }
-
-    // complexity (number of histograms for a given edge)
-    unsigned int get_complexity()const {return cost->get_complexity(); }
 
     //  edge id
     void set_edge_id(uint32_t edge_id){ _edge_id = edge_id; }
@@ -109,27 +102,6 @@ public:
     HistCost& get_cost() const {return *cost;}
 
     HistCost* get_cost_pointer(){ return cost;}
-
-    void add_cost(Histogram _cost)
-    {
-        (*cost).add_cost(_cost);
-    }
-
-    // A cost is constant if it isn't dependant on time.
-    bool is_constant() const
-    {
-        return (*cost).is_constant();
-    }
-
-    Histogram& get_constant_value()
-    {
-       return (*cost).get_constant_value();
-    }
-
-    void set_constant_value(Histogram value)
-    {
-        (*cost).set_constant_value(value);
-    }
 
     void reset(){
         cost = nullptr;

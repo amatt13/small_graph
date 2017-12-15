@@ -48,6 +48,8 @@ inline bool neq(const double& x, const double& y) { return ! eq(x, y); }
 inline bool gt(const double& x, const double& y) { return lt(y, x); }
 inline bool ge(const double& x, const double& y) { return le(y, x); }
 
+
+    // added unit versions
 inline bool lt(const uint32_t& x, const uint32_t& y) { return x < y; }
 inline bool le(const uint32_t& x, const uint32_t& y) { return x <= y; }
 inline bool ge(const uint32_t& x, const uint32_t& y) { return le(y, x); }

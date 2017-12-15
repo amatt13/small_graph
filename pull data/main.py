@@ -4,6 +4,7 @@ import psycopg2
 import sys
 from enum import Enum
 
+
 class GraphType(Enum):
     denmark = "3"
     north_jutland = "2"
@@ -53,7 +54,7 @@ def write_edge_information(data):
                 res_second = "0" + str(data[i][0].second)
             else:
                 res_second = str(data[i][0].second)
-            if data[i][3] <= 200:
+            if data[i][3] <= 200:  # remove those that drive faster than 200 km/hr
                 hist = str(location.value + " " + str(data[i][3])) + " " + str(res_hour) + ":" + str(
                     res_minute) + ":" + str(res_second) + " " + str(data[i][0].weekday()) + "\n"
                 output.write(hist)
@@ -71,7 +72,6 @@ if __name__ == "__main__":
     parser.add_argument('-u', type=str, required=False, help='Username')
     parser.add_argument('-pa', type=str, required=False, help='password')
     parser.add_argument('-l', type=str, required=False, help='location')
-    print("Started")
 
     args = parser.parse_args()
     config = configparser.ConfigParser()
@@ -100,9 +100,10 @@ if __name__ == "__main__":
     else:
         pw = args.pa
     tp = config.get('DEFAULT', 'tp')
-    filename = config.get('DEFAULT', 'output_file')
+    filename = config.get('DEFAULT', '../../q/storage/anders/suoutput_file')
     output = open(filename, "w")
     location = get_location_enum(args.l)
+    print("Started with location: " + location.__str__())
 
     conn = psycopg2.connect(database="au_db", user=user, password=pw, host=ip, port=port)
     cur = conn.cursor()
@@ -159,16 +160,29 @@ if __name__ == "__main__":
 
     parallel_duplicates = cur.fetchall()
 
-    #TODO fjern dem der kører hurtigere end 200
 
     # Inside bounds
-    cur.execute("SELECT DISTINCT(r.id) "
-                "FROM road_network r, vertices v "
-                "WHERE r.source_vid = v.id "
-                "AND v.xpos <= %s "
-                "AND v.xpos >= %s "
-                "AND v.ypos <= %s "
-                "AND v.ypos >= %s", (aal_east, aal_west, aal_north, aal_south))
+    if location == GraphType.aalborg:
+        cur.execute("SELECT DISTINCT(r.id) "
+                    "FROM road_network r, vertices v "
+                    "WHERE r.source_vid = v.id "
+                    "AND v.xpos <= %s "
+                    "AND v.xpos >= %s "
+                    "AND v.ypos <= %s "
+                    "AND v.ypos >= %s", (aal_east, aal_west, aal_north, aal_south))
+    elif location == GraphType.north_jutland:
+        cur.execute("SELECT DISTINCT(r.id) "
+                    "FROM road_network r, vertices v "
+                    "WHERE r.source_vid = v.id "
+                    "AND v.xpos <= %s "
+                    "AND v.xpos >= %s "
+                    "AND v.ypos <= %s "
+                    "AND v.ypos >= %s", (northj_east, northj_west, northj_north, northj_south))
+    elif location == GraphType.denmark:
+        pass  # use all data
+    else:
+        print("No location picked.\nValid choises are: ''denmark'',  ''north_jutland'' and ''aalborg''\n"
+              "Using location ''denmark''")
 
     inside_bounds_ids = cur.fetchall()
 
