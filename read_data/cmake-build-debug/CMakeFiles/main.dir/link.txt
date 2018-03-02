@@ -1,1 +1,1 @@
-/usr/bin/g++-5   -std=c++14 -fopenmp  -g   CMakeFiles/main.dir/main.cpp.o  -o main 
+/usr/bin/g++-5   -std=c++11 -fopenmp  -g  -rdynamic CMakeFiles/main.dir/main.cpp.o  -o main 

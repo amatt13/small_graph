@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
     // the data file to read
     // as of now, we are reading the entirety of the input file three times (one time for each graph type). This could be changed such that only one read would be necessary
     auto cost_input_file_name(argv[1]);
-    allday(cost_input_file_name);
-    peak_vs_offpeak(cost_input_file_name);
+    //allday(cost_input_file_name);
+    //peak_vs_offpeak(cost_input_file_name);
     weekdays_vs_weekends(cost_input_file_name);
 }

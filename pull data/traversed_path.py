@@ -1,26 +1,42 @@
 import argparse
 import configparser
+import regex as re
+
 from itertools import groupby
 
 import psycopg2
-import sys
 
-data = ["471876-463980", "463980-463981", "463981-438759", "438759-438760", "42670-515687", "515687-240205",
-        "240205-22457", "22458-22457", "434076-451381", "451381-451380", "451381-640019", "640019-291718",
-        "291718-226164", "226164-640020"]
+# Debug data
+# (trip_id, seg_id)
+data = [('1', 'a-b'), ('1', 'b-c'), ('1', 'c-d'), ('1', 'c-d'), ('1', 'b-c'), ('1', 'c-d'),
+        ('2', 'b-c'), ('2', 'c-d'),
+        ('3', 'a-b'), ('3', 'a-b'), ('3', 'a-b'),
+        ('4', 'a-b'),
+        ('5', 'b-c'), ('5', 'c-d'), ('5', 'c-d')]
 
-next_id = 0
+# Short names for seg_id
+next_id = -1
+# All recorded segments (segment = edge-edge)
 segments = dict()
 
 
 def get_next_id():
+    """
+    ID producer
+    :return: A new ID i the format '#[number]'
+    """
     global next_id
-    result = "#" + str(next_id)
     next_id += 1
-    return result
+    return "#" + str(next_id)
 
 
-def func(trip: tuple):
+def shorten(trip: tuple):
+    """
+    Add segment to segments dict and rename the seg_id,
+    or return the short name if already seen
+    :param trip: trip_id, seg_id
+    :return: trip_id, short_name
+    """
     global segments
     if trip[1] not in segments:
         short_name = get_next_id()
@@ -34,16 +50,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Download frequently traversed paths and report their properties')
     parser.add_argument('--ini', required=True,
                         help='The configuration file, e.g., transfer.ini')
-    parser.add_argument('-n', type=str, required=False, help='Database name')
-    parser.add_argument('-i', type=str, required=False, help='Database IP')
+    parser.add_argument('-n',  type=str, required=False, help='Database name')
+    parser.add_argument('-i',  type=str, required=False, help='Database IP')
     parser.add_argument('-po', type=str, required=False, help='Database port')
-    parser.add_argument('-u', type=str, required=False, help='Username')
+    parser.add_argument('-u',  type=str, required=False, help='Username')
     parser.add_argument('-pa', type=str, required=False, help='password')
-    parser.add_argument('-c', type=str, required=False, help='frequent count')
+    parser.add_argument('-c',  type=str, required=False, help='frequent count')
 
     args = parser.parse_args()
     config = configparser.ConfigParser()
-    # The default values will be used if some of the parameters are empty/None
     config.read(args.ini)
     if args.n is None:
         db_name = config.get('DEFAULT', 'db_name')
@@ -66,44 +81,72 @@ if __name__ == '__main__':
     else:
         pw = args.pa
     if args.c is None:
-        count = config.get('DEFAULT', 'count')
+        traverse_count = config.get('DEFAULT', 'count')
     else:
-        count = args.c
+        traverse_count = args.c
+
     tp = config.get('DEFAULT', 'tp')
     filename = config.get('DEFAULT', 'output_file')
     output = open(filename, "w")
 
-    print("frequently traversed count is: " + str(count))
+    print("Frequently traversed count is: " + traverse_count)
+    traverse_count = int(traverse_count)  # change type to int...
     conn = psycopg2.connect(database="au_db", user=user, password=pw, host=ip, port=port)
     cur = conn.cursor()
+
     cur.execute("SELECT trip_id, seg_id "
                 "FROM trips")
-    # data = cur.fetchall()
-    data = cur.fetchmany(25)
+    data = cur.fetchall()
+    #data = cur.fetchmany(10000)
+
+    # Sort by trip_id
     sorted_data = sorted(data, key=lambda x: x[0])
     del data
 
     # map seg_ids to shorter names
-    sorted_data = [func(item) for item in sorted_data]
+    sorted_data = [shorten(item) for item in sorted_data]
 
+    # Format sorted_data into a list that contains the trip_id and then all of the visited seg_ids
+    # trip0, (seg1, seg2, seg3...)
     groups = []
-    unique_keys = []
     for k, g in groupby(sorted_data, lambda x: x[0]):
-        groups.append(list(g))  # Store group iterator as a list
-        unique_keys.append(k)
+        groups.append(list(g))
+    del sorted_data
 
+    # Concatenate the seg_id list into a single string
     concatenated = []
     for group in groups:
-        concatenated.append((group[0][0], ("".join([item[1] for item in group]))))
+        concatenated.append((group[0][0], ("".join([item[1] for item in group])) + "#"))
 
+    # Dict where the key is the concatenated seg_ids and the value is the trip_id and the number of times it have been
+    # traversed
     traversals = dict()
-    concatenated.append((-1, concatenated[0][1]))
-    for i in concatenated:
-        for j in concatenated:
-            if i[1] in j[1]:
-                if i[0] in traversals:
-                    traversals[i[1]] += j[1].count(i[1])
-                else:
-                    traversals[i[1]] = j[1].count(i[1])
+    for trip in concatenated:
+        traversals[trip[1]] = trip[0], 0
+
+    # Count and save the number of times that a path have been traversed
+    traversals_length = len(traversals)
+    count = 1
+    print("Total count: " + str(traversals_length))
+    for path in traversals:
+        if count % 100 == 0:
+            print(str(count) + "/" + str(traversals_length))  # progress update: mod 100
+        elif count == traversals_length:
+            print(str(count) + "/" + str(traversals_length))  # progress update: done(last)
+        count += 1
+        for trip in concatenated:
+            occurrences = len(re.findall(path, trip[1], overlapped=True))
+            if occurrences >= 1:
+                traversals[path] = traversals.get(path)[0], traversals.get(path)[1] + occurrences
+
+    results = []
+    for path in traversals:
+        value = traversals.get(path)
+        if value[1] >= traverse_count:
+            results.append((value[0], value[1]))
+
     print("Done")
+    print("Traversal Counts")
+    for result in results:
+        print(str(result[0]) + ":" + str(result[1]))
     pass

@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 2.8)
 
 # name of the project
 PROJECT(read_data)
 
 # use C++14
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -fopenmp ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fopenmp ")
 
 # include the directory that CMakeLists.txt is located
 include_directories(${read_data_SOURCE_DIR})
