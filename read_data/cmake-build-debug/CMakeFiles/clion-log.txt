@@ -1,4 +1,11 @@
-/home/anders/Documents/clion-2017.2.3/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_COMPILER=/usr/bin/g++-5 -D CMAKE_C_COMPILER=/usr/bin/gcc-5 -G "CodeBlocks - Unix Makefiles" /home/anders/Documents/small_graph/read_data
+/home/anders/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/173.4127.32/bin/cmake/bin/cmake -DCMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_COMPILER=/usr/bin/g++-5 -D CMAKE_C_COMPILER=/usr/bin/gcc-5 -G "CodeBlocks - Unix Makefiles" /home/anders/Documents/small_graph/read_data
+-- The CXX compiler identification is GNU 5.4.0
+-- Check for working CXX compiler: /usr/bin/g++-5
+-- Check for working CXX compiler: /usr/bin/g++-5 -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
 -- Configuring done
 -- Generating done
 -- Build files have been written to: /home/anders/Documents/small_graph/read_data/cmake-build-debug
