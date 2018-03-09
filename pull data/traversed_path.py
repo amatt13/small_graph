@@ -4,6 +4,8 @@ import pickle
 from itertools import groupby
 import psycopg2
 
+FIRST_ENTRY_VALUE = "NA"
+
 # Debug data
 # (trip_id, seg_id)
 data = [('1', 'a-b'), ('1', 'b-c'), ('1', 'c-d'), ('1', 'c-d'), ('1', 'b-c'), ('1', 'c-d'),
@@ -12,10 +14,18 @@ data = [('1', 'a-b'), ('1', 'b-c'), ('1', 'c-d'), ('1', 'c-d'), ('1', 'b-c'), ('
         ('4', 'a-b'),
         ('5', 'b-c'), ('5', 'c-d'), ('5', 'c-d')]
 
+gs = [[(1, '475808-452699'), (1, '411961-475808'), (1, '613448-411961'), (1, '53837-613448'), (1, '53837-475847'), (1, '67241-475847')],
+      [(2, '411261-508029'), (2, '393206-411261'), (2, '354873-393206'), (2, '258074-354873'), (2, '393205-258074'), (2, '482189-393205'), (2, '104475-482189'), (2, '385074-104475'), (2, '496282-385074'), (2, '102548-496282')],
+      [(3, '560042-627632'), (3, '32809-172893'), (3, '412495-32809'), (3, '247236-412495'), (3, '447808-247236'), (3, '627632-447808'), (3, '457610-560042'), (3, '308196-457610')],
+      [(4, '53837-475847'), (4, '67241-475847')],
+      [(5, '53837-475847'), (5, '67241-475847')],
+      [(6, '53837-475847'), (6, '67241-475847')]]
+
 # Short names for seg_id
 next_id = -1
 # All recorded segments (segment = edge-edge)
 segments = dict()
+
 
 def get_next_id():
     """
@@ -105,6 +115,18 @@ def create_frequent_paths_1(trips: list, min_traversal: int):
             frequent_paths[0].append((edge,))
 
 
+def write_frequent(trip_counter: dict, x: int, y: int):
+    with open('frequent_paths_{0}'.format(str(y)), 'w') as f:
+        for path in trip_counter:
+            if trip_counter.get(path)[0] > x:
+                frequent_paths[y - 1].append(path)
+                f.write("{0},\n{1},\n{{{2}}}\n".format(
+                    ", ".join(path),
+                    str(trip_counter.get(path)[0]),
+                    ", ".join(str(trip_id) for trip_id in trip_counter.get(path)[1]))
+                )
+
+
 def hot_paths(trips: list, x: int, cardinality: int):
     trip_counter = {}
     y = 2
@@ -125,13 +147,11 @@ def hot_paths(trips: list, x: int, cardinality: int):
                     if a in frequent_paths[y-2] and b in frequent_paths[y-2]:
                         c = trip[1][i: i + 1 + y - 1]
                         if trip_counter.get(c) is None:
-                            trip_counter[c] = 1
+                            trip_counter[c] = 1, [trip[0]]
                         else:
-                            trip_counter[c] = trip_counter[c] + 1
+                            trip_counter[c] = trip_counter[c][0] + 1, trip_counter[c][1] + [trip[0]]
                     i += 1
-        for path in trip_counter:
-            if trip_counter.get(path) > x:
-                frequent_paths[y-1].append(path)
+        write_frequent(trip_counter, x, y)
         trip_counter.clear()
         y += 1
 
@@ -140,7 +160,7 @@ def hot_paths(trips: list, x: int, cardinality: int):
         pickle.dump(frequent_paths, f, pickle.HIGHEST_PROTOCOL)
 
 
-def db_stuff():
+def fetch_data(save_to_file: bool, all_data: bool):
     parser = argparse.ArgumentParser(description='Download frequently traversed paths and report their properties')
     parser.add_argument('--ini', required=True,
                         help='The configuration file, e.g., transfer.ini')
@@ -155,10 +175,6 @@ def db_stuff():
     args = parser.parse_args()
     config = configparser.ConfigParser()
     config.read(args.ini)
-    if args.n is None:
-        db_name = config.get('DEFAULT', 'db_name')
-    else:
-        db_name = args.n
     if args.i is None:
         ip = config.get('DEFAULT', 'ip')
     else:
@@ -180,46 +196,65 @@ def db_stuff():
     else:
         traverse_count = args.c
 
-    tp = config.get('DEFAULT', 'tp')
-    filename = config.get('DEFAULT', 'output_file')
-    output = open(filename, "w")
-
     print("Frequently traversed count is: " + traverse_count)
     traverse_count = int(traverse_count)  # change type to int...
     conn = psycopg2.connect(database="au_db", user=user, password=pw, host=ip, port=port)
     cur = conn.cursor()
 
     print("Fetching...")
-    # cur.execute("SELECT m.trip_id, m.seg_id "
-    #             "FROM ( "
-    #             "   SELECT trip_id "
-    #             "   FROM trips "
-    #             "   WHERE trip_id >= 251627"
-    #             "   AND trip_id <= 3000000"
-    #             "   GROUP BY trip_id"
-    #             ") t "
-    #             "JOIN trips m "
-    #             "ON m.trip_id = t.trip_id")
-
-    cur.execute("SELECT m.trip_id, m.seg_id "
-               "FROM ( "
-               "   SELECT trip_id "
-               "   FROM trips "
-               "   GROUP BY trip_id"
-               ") t "
-               "JOIN trips m "
-               "ON m.trip_id = t.trip_id")
+    if all_data:
+        cur.execute("SELECT m.trip_id, m.seg_id "
+                    "FROM ( "
+                    "   SELECT trip_id "
+                    "   FROM trips "
+                    "   GROUP BY trip_id"
+                    "   ORDER BY trip_id"
+                    ") t "
+                    "JOIN trips m "
+                    "ON m.trip_id = t.trip_id")
+    else:
+        cur.execute("SELECT m.trip_id, m.seg_id "
+                    "FROM ( "
+                    "   SELECT trip_id "
+                    "   FROM trips "
+                    "   WHERE trip_id >= 295000"
+                    "   AND trip_id <=   300000"
+                    "   GROUP BY trip_id"
+                    "   ORDER BY trip_id"
+                    ") t "
+                    "JOIN trips m "
+                    "ON m.trip_id = t.trip_id")
     data = cur.fetchall()
     print("Data collected...\nMapping...")
-
-    # map seg_ids to shorter names
-    sorted_data = [shorten(item) for item in data]
 
     # Format sorted_data into a list that contains the trip_id and then all of the visited seg_ids
     # trip0, (seg1, seg2, seg3...)
     groups = []
-    for k, g in groupby(sorted_data, lambda x: x[0]):
+    for k, g in groupby(data, lambda x: x[0]):
         groups.append(list(g))
+
+    last_trip_id = data[len(data) - 1][0]
+    for entry in groups:
+        if len(entry) > 1:
+            prev_dest = FIRST_ENTRY_VALUE
+            i = 0
+            for edge in reversed(entry):
+                split = edge[1].split('-')
+                start = split[0]
+                if start != prev_dest and prev_dest != FIRST_ENTRY_VALUE:
+                    groups.append(entry[-i:])
+                    groups.append(entry[:-i])
+                    groups.remove(entry)
+                    entry = entry[:-i]
+                    i = 0
+                else:
+                    i = i
+                    pass
+                prev_dest = split[1]
+                i += 1
+
+    # map seg_ids to shorter names
+    # sorted_data = [shorten(item) for item in data]
 
     # Concatenate the seg_id list into a single string
     trips = []
@@ -227,18 +262,56 @@ def db_stuff():
         trips.append((group[0][0], tuple([item[1] for item in group])))
 
     # Save everything
-    with open('all_data', 'wb') as f:
-        pickle.dump(trips, f, pickle.HIGHEST_PROTOCOL)
+    if save_to_file:
+        with open('all_data', 'wb') as f:
+            pickle.dump(trips, f, pickle.HIGHEST_PROTOCOL)
 
     return trips, traverse_count
 
 
 if __name__ == '__main__':
-    trips, traverse_count = db_stuff()
+    with open('create_frequent_paths', 'rb') as f:
+        X = pickle.load(f)
+    trips, traverse_count = fetch_data(save_to_file=False, all_data=False)
     #with open('short', 'rb') as f:
     #    X = pickle.load(f)
-    #sorted_data = pickle.load(open("data", "rb"))
+    #sorted_data = pickle.load(open("all_data", "rb"))
 
     create_frequent_paths_1(trips, traverse_count)
-    hot_paths(trips, traverse_count, 10)
+    hot_paths(trips, 3, 10)
     pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
