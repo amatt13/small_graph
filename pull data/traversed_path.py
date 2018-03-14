@@ -53,40 +53,6 @@ def shorten(trip: tuple):
         return trip[0], segments.get(trip[1])
 
 
-# def hot_paths_old(trips):
-#     # Dict where the key is the concatenated seg_ids and the value is the trip_id and the number of times it have been
-#     # traversed
-#     traversals = dict()
-#     for trip in trips:
-#         traversals[trip[1]] = trip[0], 0
-#
-#     # Count and save the number of times that a path have been traversed
-#     traversals_length = len(traversals)
-#     count = 1
-#     print("Total count: " + str(traversals_length))
-#     for path in traversals:
-#         if count % 100 == 0:
-#             print(str(count) + "/" + str(traversals_length))  # progress update: mod 100
-#         elif count == traversals_length:
-#             print(str(count) + "/" + str(traversals_length))  # progress update: done(last)
-#         count += 1
-#         for trip in trips:
-#             occurrences = len(re.findall(path, trip[1], overlapped=True))
-#             if occurrences >= 1:
-#                 traversals[path] = traversals.get(path)[0], traversals.get(path)[1] + occurrences
-#
-#     results = []
-#     for path in traversals:
-#         value = traversals.get(path)
-#         if value[1] >= traverse_count:
-#             results.append((value[0], value[1]))
-#
-#     print("Done")
-#     print("Traversal Counts")
-#     for result in results:
-#         print(str(result[0]) + ":" + str(result[1]))
-
-
 frequent_paths = []
 
 
@@ -120,7 +86,7 @@ def write_frequent(trip_counter: dict, x: int, y: int):
         for path in trip_counter:
             if trip_counter.get(path)[0] > x:
                 frequent_paths[y - 1].append(path)
-                f.write("{0},\n{1},\n{{{2}}}\n".format(
+                f.write("{0};{1};{{{2}}};\n".format(
                     ", ".join(path),
                     str(trip_counter.get(path)[0]),
                     ", ".join(str(trip_id) for trip_id in trip_counter.get(path)[1]))
@@ -233,7 +199,6 @@ def fetch_data(save_to_file: bool, all_data: bool):
     for k, g in groupby(data, lambda x: x[0]):
         groups.append(list(g))
 
-    last_trip_id = data[len(data) - 1][0]
     for entry in groups:
         if len(entry) > 1:
             prev_dest = FIRST_ENTRY_VALUE
@@ -272,14 +237,14 @@ def fetch_data(save_to_file: bool, all_data: bool):
 if __name__ == '__main__':
     with open('create_frequent_paths', 'rb') as f:
         X = pickle.load(f)
-    trips, traverse_count = fetch_data(save_to_file=False, all_data=False)
+    trips, traverse_count = fetch_data(save_to_file=True, all_data=True)
     #with open('short', 'rb') as f:
     #    X = pickle.load(f)
     #sorted_data = pickle.load(open("all_data", "rb"))
 
-    create_frequent_paths_1(trips, traverse_count)
-    hot_paths(trips, 3, 10)
-    pass
+    create_frequent_paths_1(trips=trips, min_traversal=traverse_count)
+    hot_paths(trips=trips, x=traverse_count, cardinality=10)
+    print("Done")
 
 
 
