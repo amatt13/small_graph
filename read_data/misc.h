@@ -1,37 +1,4 @@
-/*
- * katch/util/misc.h
- *
- *
- * This file is part of
- *
- * KaTCH -- Karlsruhe Time-Dependent Contraction Hierarchies
- *
- * Copyright (C) 2015
- *
- * Institut fuer Theroretische Informatik,
- * Karlsruher Institut fuer Technology (KIT),
- * 76131 Karlsruhe, Germany
- *
- * Author: Gernot Veit Batz
- *
- *
- *
- * KaTCH is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Affero General Public License as published
- * by the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * KaTCH is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
- * License for more details.
- *
- * You should have received a copy of the GNU Affero General Public
- * License along with Contraction Hierarchies; see the file COPYING;
- * if not, see <http://www.gnu.org/licenses/>.
- *
- */
-
+//TODO: Fjern katch ting
 #ifndef KATCH_MISC_H_
 #define KATCH_MISC_H_
 
@@ -50,11 +17,12 @@
 
 #include "basic.h"
 
-#define KATCH_IMPLIES(a, b) ((!(a)) || (b))
-
 enum GraphType {aalborg=1, nort_jutand, denmark};
 enum TimeType {alldata=1, peak, days};
 
+/**
+ * Here are the different peak intervals that are used in peak_vs_off_peak
+ */
              // se mi hr md mo yr wd yd
 struct tm peak1{0, 0, 0, 1, 0, 0, 1, 0};
 struct tm peak2{0, 0, 7, 1, 0, 0, 1, 0};
@@ -70,8 +38,12 @@ namespace util
 {
 using time = struct tm;
 
-
-std::string get_location_fromgraphtype(int type) {
+/**
+ * Compare ID against enum to determine the graph type
+ * @param type an ID from the input file in the range [1-3]
+ * @return the result will be used as a prefix for the output files
+ */
+std::string get_location_from_graph_type(int type) {
     if (type == aalborg)
         return "AAl";
     else if (type == nort_jutand)
@@ -81,43 +53,25 @@ std::string get_location_fromgraphtype(int type) {
     else return "UNKNOWN";
 }
 
-// Check whether a range (of "less" and "equal_to" comparable elements) contains duplicates
-template
-<
-    typename Iterator,
-    typename LtFn = std::less<typename std::iterator_traits<Iterator>::value_type>,
-    typename EqFn = std::equal_to<typename std::iterator_traits<Iterator>::value_type>
->
-bool has_duplicates
-(
-        const Iterator& begin,
-        const Iterator& end,
-        const LtFn& lt = std::less<typename std::iterator_traits<Iterator>::value_type>(),
-        const EqFn& eq = std::equal_to<typename std::iterator_traits<Iterator>::value_type>()
-)
-{
-    std::vector<typename std::iterator_traits<Iterator>::value_type> vec(begin, end);
-
-    std::sort(vec.begin(), vec.end(), lt);
-    auto has_duplicate_result = std::adjacent_find(vec.begin(), vec.end(), eq); // pointer to duplicate element. If no duplicates, equals end().
-    return has_duplicate_result != vec.end();
-}
-
-
-using TimePoint = std::chrono::high_resolution_clock::time_point;
-
-// lhs and rhs are equal - date is ignored
-bool time_equal(const time& lhs, const time& rhs)
-{
-    // Return whether or not the two time structs are equal
+/**
+ * Test if two struct tm is equal. Date is ignored
+ * @param lhs
+ * @param rhs
+ * @return True if equal, false if not
+ */
+bool time_equal(const time& lhs, const time& rhs) {
     return lhs.tm_sec == rhs.tm_sec &&
            lhs.tm_min == rhs.tm_min &&
            lhs.tm_hour == rhs.tm_hour;
 }
 
-// lhs is before rhs
-bool time_before(const time& lhs, const time& rhs)
-{
+/**
+ * Test if one date is before another. Date is ignored
+ * @param lhs
+ * @param rhs
+ * @return True if lhs is before rhs, false if not
+ */
+bool time_before(const time& lhs, const time& rhs) {
     if(lhs.tm_hour < rhs.tm_hour)
         return true;
     if(lhs.tm_hour == rhs.tm_hour && lhs.tm_min < rhs.tm_min)
@@ -128,6 +82,33 @@ bool time_before(const time& lhs, const time& rhs)
 extern "C" char* strptime(const char* s,
                           const char* f,
                           struct tm* tm) {
+    /* KaTCH -- Karlsruhe Time-Dependent Contraction Hierarchies
+     *
+     * Copyright (C) 2015
+     *
+     * Institut fuer Theroretische Informatik,
+     * Karlsruher Institut fuer Technology (KIT),
+     * 76131 Karlsruhe, Germany
+     *
+     * Author: Gernot Veit Batz
+     *
+     *
+     *
+     * KaTCH is free software; you can redistribute it and/or modify it
+     * under the terms of the GNU Affero General Public License as published
+     * by the Free Software Foundation; either version 3 of the License, or
+     * (at your option) any later version.
+     *
+     * KaTCH is distributed in the hope that it will be useful, but WITHOUT
+     * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+     * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+     * License for more details.
+     *
+     * You should have received a copy of the GNU Affero General Public
+     * License along with Contraction Hierarchies; see the file COPYING;
+     * if not, see <http://www.gnu.org/licenses/>.
+     */
+
     // Isn't the C++ standard lib nice? std::get_time is defined such that its
     // format parameters are the exact same as strptime. Of course, we have to
     // create a string stream first, and imbue it with the current C locale, and

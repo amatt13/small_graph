@@ -55,28 +55,6 @@ const FwEdgeIterator INVALID_FW_EDGE_ITERATOR(std::numeric_limits<uint32_t>::max
 const BwEdgeIterator INVALID_BW_EDGE_ITERATOR(std::numeric_limits<uint32_t>::max());
 const EdgeIterator INVALID_EDGE_ITERATOR(std::numeric_limits<uint32_t>::max());
 
-// Used for shortcuts.
-/*struct MiddleNodeDescr
-{
-    // Has to be time instead.
-    double _time;
-    NodeIterator _middle_node;
-
-    MiddleNodeDescr(const double& time, const NodeIterator& middle_node)
-    : _time(time), _middle_node(middle_node)
-    {}
-
-    friend bool operator== (const MiddleNodeDescr& lhs, const MiddleNodeDescr& rhs)
-    {
-        return lhs._time == rhs._time && lhs._middle_node == rhs._middle_node;
-    }
-
-    friend bool operator!= (const MiddleNodeDescr& lhs, const MiddleNodeDescr& rhs)
-    {
-        return ! (lhs == rhs);
-    }
-};*/
-
 struct MiddleCostNodeDescr
 {
     using time = struct tm;

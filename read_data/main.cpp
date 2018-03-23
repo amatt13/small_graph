@@ -9,13 +9,12 @@
 #include "btch_format.h"
 
 /**
- * Der er 96 indexes
+ * One histogram for the entire day
+ * There are 96 indices, one for each quarter of the day
  * 0 = 00:00 - 00:15
- * 95 = 23:45 - 23:59.59999999999.....
+ * 95 = 23:45 - 23:59
  * */
-
-// One histogram for the entire day
-void allday(const std::string &cost_input_file_name) {
+void all_day(const std::string &cost_input_file_name) {
     std::cout << "Reading data file" << std::endl;
     auto edges_and_type = katch::hist_format::read_edges(cost_input_file_name, alldata);
 
@@ -38,7 +37,7 @@ void allday(const std::string &cost_input_file_name) {
  * weekends: sun-sat
  *  00:00 - 24:00
 */
-void peak_vs_offpeak(const std::string &cost_input_file_name) {
+void peak_vs_off_peak(const std::string &cost_input_file_name) {
     std::cout << "Reading data file" << std::endl;
     auto edges_and_type = katch::hist_format::read_edges(cost_input_file_name, peak);
 
@@ -68,10 +67,13 @@ void weekdays_vs_weekends(const std::string &cost_input_file_name) {
 
 
 int main(int argc, char** argv) {
-    // the data file to read
-    // as of now, we are reading the entirety of the input file three times (one time for each graph type). This could be changed such that only one read would be necessary
+    /***
+     * The first argument should be the path to the input file.
+     * As of now, we are reading the entirety of the input file three times (one time for each graph type).
+     * This could be changed such that only one read would be necessary
+     */
     auto cost_input_file_name(argv[1]);
-    allday(cost_input_file_name);
-    peak_vs_offpeak(cost_input_file_name);
-    //weekdays_vs_weekends(cost_input_file_name);
+    all_day(cost_input_file_name);
+    peak_vs_off_peak(cost_input_file_name);
+    weekdays_vs_weekends(cost_input_file_name);
 }

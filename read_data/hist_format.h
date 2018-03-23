@@ -368,7 +368,7 @@ namespace katch
                 amount_of_edges ++;
             }
             std::cout << "Amount of edges: " << amount_of_edges << " \n";
-            return std::make_pair(std::move(result), util::get_location_fromgraphtype(type));
+            return std::make_pair(std::move(result), util::get_location_from_graph_type(type));
         }
 
         // read edges and construct peak histograms
@@ -448,7 +448,7 @@ namespace katch
                 amount_of_edges ++;
             }
             std::cout << "Amount of edges: " << amount_of_edges << " \n";
-            return std::make_pair(std::move(result), util::get_location_fromgraphtype(type));
+            return std::make_pair(std::move(result), util::get_location_from_graph_type(type));
         }
 
         // read edges and construct alldata histograms
@@ -502,22 +502,27 @@ namespace katch
                 amount_of_edges ++;
             }
             std::cout << "Amount of edges: " << amount_of_edges << " \n";
-            return std::make_pair(std::move(result), util::get_location_fromgraphtype(type));
+            return std::make_pair(std::move(result), util::get_location_from_graph_type(type));
         }
 
-		std::pair<std::vector<Edge>, std::string> read_edges(const std::string& input_file_name, TimeType time_type)
-		{
-            std::ifstream input_hist_file(input_file_name);
-            std::vector<Edge> result;
+        /**
+         * Read input file and return the edges together with the graph type
+         * @param input_file_name the input file to read
+         * @param time_type the type of graph to be constructed
+         * @return edges together with the graph type
+         */
+		std::pair<std::vector<Edge>, std::string> read_edges(const std::string& input_file_name, TimeType time_type) {
+            // open tge file
+		    std::ifstream input_hist_file(input_file_name);
 
 			if (input_file_name.empty()) {
                 std::cerr << "Empty input file name given.\n";
-				return std::make_pair(std::move(result), util::get_location_fromgraphtype(-1));
+				return nullptr;
 			}
 			if (!input_hist_file.is_open()) {
                 std::cerr << " ABORT\n";
-                std::cout << "Unable to open file '" << input_file_name << "'\n";
-				return std::make_pair(std::move(result), util::get_location_fromgraphtype(-1));
+                std::cerr << "Unable to open file '" << input_file_name << "'\n";
+				return nullptr;
 			}
 
             // file is OK. Start reading it
@@ -535,7 +540,7 @@ namespace katch
             }
             else {
                 std::cout << "Invalid time type selected" << std::endl;
-                return std::make_pair(std::move(result), util::get_location_fromgraphtype(-1));
+                return nullptr;
             }
 		}
 	}

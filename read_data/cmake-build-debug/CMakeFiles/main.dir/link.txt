@@ -1,1 +1,0 @@
-/usr/bin/g++-5   -std=c++11 -fopenmp   -rdynamic CMakeFiles/main.dir/main.cpp.o  -o main 

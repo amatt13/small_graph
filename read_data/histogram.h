@@ -14,64 +14,55 @@
 #include "double.h"
 
 
-namespace katch
-{
+namespace katch {
+    class Histogram {
+        using time = struct tm;
 
-class Histogram
-{
-    using time = struct tm;
-private:
+        private:
+        time _tp_start;
+        time _tp_end;
+        uint32_t _n_measurements;
+        bool _is_constant = false;  // if _n_measurements = 0, there will only be one bucket with the cost equal to the speed limit times length
+        std::map<uint32_t,double> _buckets;  // cost, probability
+        public:
+        static const Histogram INFTY;
 
-    time _tp_start;
-    time _tp_end;
-    uint32_t _n_measurements;
-    bool _is_constant = false;  // if _n_measurements = 0, there will only be one bucket with the cost equal to the speed limit times length
-    std::map<uint32_t,double> _buckets;  // cost, probability
+        Histogram() = default;
 
+        // start, end, num of measurements, buckets
+        Histogram(time start, time end, bool is_constant, uint32_t measurements, std::map<uint32_t, double> buckets)
+                : _tp_start(start), _tp_end(end), _is_constant(is_constant), _n_measurements(measurements), _buckets(buckets)
+        {
+            assert(validate_probability());
+        }
 
-public:
-    static const Histogram INFTY;
+        // start, end, num of measurements, buckets
+        Histogram(time start, time end, uint32_t measurements, std::map<uint32_t, double> buckets)
+        : _tp_start(start), _tp_end(end), _n_measurements(measurements), _buckets(buckets)
+        {
+            assert(validate_probability());
+        }
 
-#pragma region Constructors
+        // num of measurements, buckets
+        Histogram(uint32_t measurements, std::map<uint32_t, double> buckets)
+        : _n_measurements(measurements), _buckets(buckets)
+        { }
 
-    Histogram() = default;
+        // start, end
+        Histogram(time start, time end)
+        : _tp_start(start), _tp_end(end)
+        {}
 
-    // start, end, num of measurements, buckets
-    Histogram(time start, time end, bool is_constant, uint32_t measurements, std::map<uint32_t, double> buckets)
-            : _tp_start(start), _tp_end(end), _is_constant(is_constant), _n_measurements(measurements), _buckets(buckets)
-    {
-        assert(validate_probability());
-    }
+        // start, end, buckets
+        Histogram(time start, time end, std::map<uint32_t, double> buckets)
+        : _tp_start(start), _tp_end(end), _buckets(buckets)
+        {}
 
-    // start, end, num of measurements, buckets
-    Histogram(time start, time end, uint32_t measurements, std::map<uint32_t, double> buckets)
-    : _tp_start(start), _tp_end(end), _n_measurements(measurements), _buckets(buckets)
-    {
-        assert(validate_probability());
-    }
+        // start, end, constant_value, buckets
+        Histogram(time start, time end, double constant, std::map<uint32_t, double> buckets, bool is_constant)
+        : _tp_start(start), _tp_end(end), _buckets(buckets), _is_constant(is_constant)
+        {_buckets[constant] = 100;}
 
-    // num of measurements, buckets
-    Histogram(uint32_t measurements, std::map<uint32_t, double> buckets)
-    : _n_measurements(measurements), _buckets(buckets)
-    { }
-
-    // start, end
-    Histogram(time start, time end)
-    : _tp_start(start), _tp_end(end)
-    {}
-
-    // start, end, buckets
-    Histogram(time start, time end, std::map<uint32_t, double> buckets)
-    : _tp_start(start), _tp_end(end), _buckets(buckets)
-    {}
-
-    // start, end, constant_value, buckets
-    Histogram(time start, time end, double constant, std::map<uint32_t, double> buckets, bool is_constant)
-    : _tp_start(start), _tp_end(end), _buckets(buckets), _is_constant(is_constant)
-    {_buckets[constant] = 100;}
-#pragma endregion
-
-#pragma region getters/setters
         void set_probability(uint32_t value, double probability)
         {
             _buckets[value] = probability;
@@ -136,26 +127,6 @@ public:
         }
 
         bool is_constant() const { return _is_constant; }
-
-        /*
-        bool is_equal(Histogram h)
-        {
-            if (!util::time_equal(this->get_tp_start(), h.get_tp_start())) return false;
-            if (!util::time_equal(this->get_tp_end(), h.get_tp_end())) return false;
-            if (this->get_n_measurements() != h.get_n_measurements()) return false;
-            if (this->is_constant() != h.is_constant()) return false;
-
-            auto lhs_buckets = this->get_buckets();
-            auto rhs_buckets = h.get_buckets();
-            if (lhs_buckets.size() != rhs_buckets.size()) return false;
-            for (auto it = lhs_buckets.begin(); it != lhs_buckets.end(); ++it)
-            {
-                if (lhs_buckets[it->first] != rhs_buckets[it->first]) return false;
-            }
-
-            return true;
-        }*/
-        #pragma endregion
 
 	    //dbg function
         bool validate_probability()
@@ -234,7 +205,7 @@ public:
         // If you want to check if the fields are equal, use is_equal member function
         Histogram operator+(const Histogram&);
         Histogram& operator*(double multiplier) const;
-};
+    };
 
     const Histogram Histogram::INFTY = Histogram();
 
