@@ -15,22 +15,20 @@
 #include <iomanip>
 #include <cmath>
 
-#include "basic.h"
-
 enum GraphType {aalborg=1, nort_jutand, denmark};
 enum TimeType {alldata=1, peak, days};
 
 /**
  * Here are the different peak intervals that are used in peak_vs_off_peak
  */
-             // se mi hr md mo yr wd yd
-struct tm peak1{0, 0, 0, 1, 0, 0, 1, 0};
-struct tm peak2{0, 0, 7, 1, 0, 0, 1, 0};
-struct tm peak3{0, 30, 8, 1, 0, 0, 1, 0};
-struct tm peak4{0, 0, 15, 1, 0, 0, 1, 0};
-struct tm peak5{0, 0, 17, 1, 0, 0, 1, 0};
-struct tm day_end{0, 0, 23, 1, 0, 0, 1, 0};
-struct tm day_start{0, 0, 0, 1, 0, 0, 1, 0};
+             //     se min hr  md mo yr wd yd
+struct tm peak1{    0, 0,  0,  1, 0, 0, 1, 0};
+struct tm peak2{    0, 0,  7,  1, 0, 0, 1, 0};
+struct tm peak3{    0, 30, 8,  1, 0, 0, 1, 0};
+struct tm peak4{    0, 0,  15, 1, 0, 0, 1, 0};
+struct tm peak5{    0, 0,  17, 1, 0, 0, 1, 0};
+struct tm day_end{  0, 0,  23, 1, 0, 0, 1, 0};
+struct tm day_start{0, 0,  0,  1, 0, 0, 1, 0};
 
 namespace katch
 {
@@ -51,32 +49,6 @@ std::string get_location_from_graph_type(int type) {
     else if (type == denmark)
         return "DK";
     else return "UNKNOWN";
-}
-
-/**
- * Test if two struct tm is equal. Date is ignored
- * @param lhs
- * @param rhs
- * @return True if equal, false if not
- */
-bool time_equal(const time& lhs, const time& rhs) {
-    return lhs.tm_sec == rhs.tm_sec &&
-           lhs.tm_min == rhs.tm_min &&
-           lhs.tm_hour == rhs.tm_hour;
-}
-
-/**
- * Test if one date is before another. Date is ignored
- * @param lhs
- * @param rhs
- * @return True if lhs is before rhs, false if not
- */
-bool time_before(const time& lhs, const time& rhs) {
-    if(lhs.tm_hour < rhs.tm_hour)
-        return true;
-    if(lhs.tm_hour == rhs.tm_hour && lhs.tm_min < rhs.tm_min)
-        return true;
-    return lhs.tm_hour == rhs.tm_hour && lhs.tm_min == rhs.tm_min && lhs.tm_sec < rhs.tm_sec;
 }
 
 extern "C" char* strptime(const char* s,

@@ -10,28 +10,34 @@ class GraphType(Enum):
     north_jutland = "2"
     aalborg = "1"
 
-# Aalborg
+
+# Aalborg - coordinates
 aal_north = 57.079702
 aal_south = 57.005367
 aal_west = 09.859484
 aal_east = 10.032176
 
-# North Jutland
+# North Jutland - coordinates
 northj_north = 57.778230
 northj_south = 56.539097
 northj_west = 8.147842
 northj_east = 11.432754
 
 
-def get_location_enum(l: str):
-    if l == "denmark":
+def get_location_enum(location: str):
+    """
+    Determine location
+    :param location: sring that is compared against the GraphType Enum
+    :return:
+    """
+    if location == "denmark":
         return GraphType.denmark
-    elif l == "north_jutland" or l == "jutland" or l == "northJutland":
+    elif location == "north_jutland" or location == "jutland" or location == "northJutland":
         return GraphType.north_jutland
-    elif l == "aalborg":
+    elif location == "aalborg":
         return GraphType.aalborg
     else:
-        sys.exit("Invalid location: " + l)
+        sys.exit("Invalid location: " + location)
 
 
 def write_edge_information(data):
@@ -63,9 +69,8 @@ def write_edge_information(data):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Download and manipulate data')
-    parser.add_argument('--ini', required=True,
-                        help='The configuration file, e.g., transfer.ini')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ini', required=True, help='The configuration file, e.g., transfer.ini')
     parser.add_argument('-n', type=str, required=False, help='Database name')
     parser.add_argument('-i', type=str, required=False, help='Database IP')
     parser.add_argument('-po', type=str, required=False, help='Database port')
@@ -100,7 +105,7 @@ if __name__ == "__main__":
     else:
         pw = args.pa
     tp = config.get('DEFAULT', 'tp')
-    filename = config.get('DEFAULT', '../../q/storage/anders/suoutput_file')
+    filename = config.get('DEFAULT', 'output_file')
     output = open(filename, "w")
     location = get_location_enum(args.l)
     print("Started with location: " + location.__str__())
@@ -159,7 +164,6 @@ if __name__ == "__main__":
                 "AND segment_type.seg_id_old = t1.seg_id_old ")
 
     parallel_duplicates = cur.fetchall()
-
 
     # Inside bounds
     if location == GraphType.aalborg:

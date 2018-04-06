@@ -1,5 +1,5 @@
-#ifndef KATCH_HIST_FORMAT_H_
-#define KATCH_HIST_FORMAT_H_
+#ifndef HIST_FORMAT_H
+#define HIST_FORMAT_H
 
 #include <fstream>
 #include <vector>
@@ -15,46 +15,57 @@
 #include "hist_cost.h"
 
 #define NUMBER_OF_DYN_HISTOGRAMS 96
-
 #define SECONDS_IN_DAY 86400
-#define SECONDS_IN_DYN_HISTOGRAM SECONDS_IN_DAY/NUMBER_OF_DYN_HISTOGRAMS
+#define SECONDS_IN_DYN_HISTOGRAM SECONDS_IN_DAY/NUMBER_OF_DYN_HISTOGRAMS // 900 sec (15 minutes)
+#define NUMBER_OF_PEAKS 6
 
-namespace katch
-{
-    struct measurement{
-        uint32_t type;
+namespace katch {
+    /**
+     * Struct that contains the nessecary information to construct a histogram
+     */
+    struct measurement {
+        uint32_t type;  // graph location
         uint32_t traversal_time;
         std::tm tm;
-        uint32_t day_of_week;
+        uint32_t day_of_week;  // 0 Monday ... 6 = Sunday
     };
 
 	namespace hist_format
 	{
 		using namespace boost::posix_time;
-		std::vector<measurement> ReadMeasurements(std::ifstream& stream, bool &reached_end)
-		{
+
+        /**
+         * Read the measurements from the input file. Reads from '{' to '}'
+         * @param stream file
+         * @param reached_end used to determine when the end of the edge have been reached
+         * @return vector of the struct measurement
+         */
+		std::vector<measurement> ReadMeasurements(std::ifstream& stream, bool &reached_end) {
 			std::vector<measurement> gps_measurements;
-			if(stream.peek() == '#'){
+			if(stream.peek() == '#') {  // # indicates a new edge
 				std::string line;
 				std::getline(stream, line);
-				std::cerr << "TWO # AFTER EACHOTHER." << line << "\n";
+				std::cerr << "TWO # IN A ROW." << line << "\n";
 				reached_end = true;
 				gps_measurements.clear();
-				return gps_measurements;
+				return gps_measurements;  // invalid edge and measurements
 			}
 
 			char buffer[10];
 
-			if(stream.peek() != '{'){
+			if(stream.peek() != '{') {  // the next character must be a '{'
 				gps_measurements.clear();
 				return gps_measurements;
 			}
 			stream.ignore(2, '{'); // Ignore '{'
 			stream.ignore(2, '\n'); // Ignore '\n'
 
-			while(stream.peek() != '}' && !reached_end){
+			while(stream.peek() != '}' && !reached_end) {
 				measurement temp_m;
-				if(stream.eof()){ reached_end = true; gps_measurements.clear(); return gps_measurements; }
+				if(stream.eof()) {
+                    reached_end = true;
+                    gps_measurements.clear();
+                    return gps_measurements; }
 				stream >> temp_m.type;
 				stream.ignore(1, ' ');
 
@@ -69,22 +80,26 @@ namespace katch
                 stream >> temp_m.day_of_week;
 
 				gps_measurements.push_back(std::move(temp_m));
-
 				stream.ignore(2, '\n'); // Ignore '\n'
 			}
 			stream.ignore(2, '}'); // Ignore '}'
 			stream.ignore(2, '\n'); // Ignore '\n'
 
-			if(stream.eof()){reached_end = true;}
+			if(stream.eof()) { reached_end = true; }
 			return gps_measurements;
 		}
 
-        std::pair<std::vector<measurement>, std::vector<measurement>> ReadMeasurements_days(std::ifstream& stream, bool &reached_end)
-        {
+        /**
+         * Similar to ReadMeasurements. Different because the day of week is considered here
+         * @param stream file
+         * @param reached_end used to determine when the end of the edge have been reached
+         * @return Two vectors of the struct measurement pair<weekdays, weekends>
+         */
+        std::pair<std::vector<measurement>, std::vector<measurement>> ReadMeasurements_days(std::ifstream& stream, bool &reached_end) {
             std::vector<measurement> gps_measurements_weekdays;
-            std::vector<measurement> gps_measurements_weekend;
+            std::vector<measurement> gps_measurements_weekend;  // two sets of measurements are needed here
 
-            if(stream.peek() == '#'){
+            if(stream.peek() == '#') {
                 std::string line;
                 std::getline(stream, line);
                 std::cerr << "TWO # AFTER EACHOTHER." << line << "\n";
@@ -96,7 +111,7 @@ namespace katch
 
             char buffer[10];
 
-            if(stream.peek() != '{'){
+            if(stream.peek() != '{') {
                 gps_measurements_weekdays.clear();
                 gps_measurements_weekend.clear();
                 return std::make_pair(gps_measurements_weekdays, gps_measurements_weekend);
@@ -126,9 +141,9 @@ namespace katch
 
                 // 0 is monday, 6 is sunday
                 if (temp_m.day_of_week < 5) {
-                    gps_measurements_weekdays.push_back(std::move(temp_m));
+                    gps_measurements_weekdays.push_back(std::move(temp_m));  // Monday, Tuesday, Wednesday Thursday, Friday
                 } else if (temp_m.day_of_week == 5 || temp_m.day_of_week == 6) {
-                    gps_measurements_weekend.push_back(std::move(temp_m));
+                    gps_measurements_weekend.push_back(std::move(temp_m));  // Sunday, Saturday
                 }
                 else {
                     assert(false);
@@ -145,21 +160,32 @@ namespace katch
             return std::make_pair(gps_measurements_weekdays, gps_measurements_weekend);
         }
 
-		std::tm calc_tm(uint32_t total_sec)
-		{
-			std::tm result;
+        /**
+         * Construct a tm based on a number of seconds, only supports sec, min, and hour
+         * @param total_sec the amount of seconds that have passed
+         * @return a tm that represents that point in time
+         */
+		std::tm calc_tm(uint32_t total_sec) {
 			uint32_t tm_sec = total_sec % 60;
 			uint32_t total_min = floor(total_sec / 60);
 			uint32_t tm_min = total_min % 60;
 			uint32_t tm_hour = floor(total_min / 60);
+
+            std::tm result;
 			result.tm_sec = tm_sec;
 			result.tm_min = tm_min;
 			result.tm_hour = tm_hour;
 			return result;
 		}
 
-        Histogram create_histogram_peak(std::vector<measurement> measurements, tm start_tm, tm end_tm)
-		{
+        /**
+         * Construct a Histogram
+         * @param measurements data
+         * @param start_tm peak start
+         * @param end_tm peak end
+         * @return histogram the represents the chosen peak intertval
+         */
+        Histogram create_histogram_peak(std::vector<measurement> measurements, tm start_tm, tm end_tm) {
 			std::map<uint32_t,double> buckets;
 
 			auto number_of_measurements = measurements.size();
@@ -177,8 +203,12 @@ namespace katch
 			return Histogram(start_tm, end_tm, number_of_measurements, buckets);
 		}
 
-        Histogram create_histogram_alldata(std::vector<measurement> measurements)
-        {
+        /**
+         * Construct a histogram
+         * @param measurements
+         * @return Histogram that represents an entire day
+         */
+        Histogram create_histogram_alldata(std::vector<measurement> measurements) {
             tm start_tm = calc_tm(0);
             tm end_tm = calc_tm(SECONDS_IN_DAY);
 
@@ -199,9 +229,14 @@ namespace katch
             return Histogram(start_tm, end_tm, number_of_measurements, buckets);
         }
 
-        Histogram create_histogram_days(std::vector<measurement> measurements, uint32_t index)
-        {
-            auto total_sec = index*SECONDS_IN_DYN_HISTOGRAM;
+        /**
+         * Construct a histogram
+         * @param measurements data
+         * @param index start interval
+         * @return Histogram that represents a time interval of 15 minutes (fx: 12:45 - 13:00)
+         */
+        Histogram create_histogram_days(std::vector<measurement> measurements, uint32_t index) {
+            auto total_sec = index*SECONDS_IN_DYN_HISTOGRAM; // which quarter to start in
             tm start_tm = calc_tm(total_sec);
             tm end_tm = calc_tm(total_sec + SECONDS_IN_DYN_HISTOGRAM);
 
@@ -222,8 +257,12 @@ namespace katch
             return Histogram(start_tm, end_tm, number_of_measurements, buckets);
         }
 
-        std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > divide_measurements(std::vector<measurement>& gps_measurements)
-		{
+        /**
+         * Split the gps_measurements into 96 parts (NUMBER_OF_DYN_HISTOGRAMS)
+         * @param gps_measurements data
+         * @return The split version of gps_measurements
+         */
+        std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > divide_measurements(std::vector<measurement>& gps_measurements) {
 			std::array<std::vector<measurement>, NUMBER_OF_DYN_HISTOGRAMS > measurements_split;
 
 			assert(SECONDS_IN_DAY % NUMBER_OF_DYN_HISTOGRAMS == 0);
@@ -239,22 +278,14 @@ namespace katch
 			return measurements_split;
 		}
 
-        /* multiple histograms. 5 for weekdays, 1 for weekends
-         * weekdays: mon-fri
-         * 1 00:00 - 07:00 off
-         * 2 07:00 - 08:30 peak
-         * 3 08:30 - 15:00 off
-         * 4 15:00 - 17:00 peak
-         * 5 17:00 - 24:00 off
-         * weekends: sun-sat
-         * 6 00:00 - 24:00
-        */
         /**
-         * peak version
-         * The measurement struct has a weekday field:  Monday is 0 and Sunday is 6. We do NOT use the tm to find the weekday
-         * */
-        std::array<std::vector<measurement>, 6 > divide_measurements_peak(std::vector<measurement>& gps_measurements)
-        {
+         * Split the gps_measurements into 6 parts (one for each peak, and one for the weekends)
+         * @param gps_measurements data
+         * @return The split version of gps_measurements
+         */
+        std::array<std::vector<measurement>, NUMBER_OF_PEAKS > divide_measurements_peak(std::vector<measurement>& gps_measurements) {
+            /* peak version
+             * The measurement struct has a weekday field:  Monday is 0 and Sunday is 6. We do NOT use the tm to find the weekday */
             auto time1 = peak1.tm_sec + peak1.tm_min*60 + peak1.tm_hour*3600;
             auto time2 = peak2.tm_sec + peak2.tm_min*60 + peak2.tm_hour*3600;
             auto time3 = peak3.tm_sec + peak3.tm_min*60 + peak3.tm_hour*3600;
@@ -288,6 +319,11 @@ namespace katch
             return measurements_split;
         }
 
+        /***
+         * Read all of the edges and detect what area they cover
+         * @param input_hist_file is an ifstream that points to the input file
+         * @return pair<vector of edges that contains histograms, location>
+         */
         std::pair<std::vector<Edge>, std::string> read_edges_days(std::ifstream& input_hist_file) {
             std::vector<Edge> result;
             bool reached_end = false;
@@ -371,7 +407,11 @@ namespace katch
             return std::make_pair(std::move(result), util::get_location_from_graph_type(type));
         }
 
-        // read edges and construct peak histograms
+        /***
+         * Read all of the edges and detect what area they cover
+         * @param input_hist_file is an ifstream that points to the input file
+         * @return pair<vector of edges that contains histograms, location>
+         */
         std::pair<std::vector<Edge>, std::string> read_edges_peak(std::ifstream& input_hist_file) {
             std::vector<Edge> result;
             bool reached_end = false;
@@ -379,7 +419,7 @@ namespace katch
 
             std::vector<measurement> gps_measurements;
             std::vector<Histogram> histograms;
-            std::array<std::vector<measurement>, 6 > measurements_split;
+            std::array<std::vector<measurement>, NUMBER_OF_PEAKS > measurements_split;
 
             auto type = -1;
             while(!input_hist_file.eof() && input_hist_file.good() && !reached_end)
@@ -451,7 +491,11 @@ namespace katch
             return std::make_pair(std::move(result), util::get_location_from_graph_type(type));
         }
 
-        // read edges and construct alldata histograms
+        /***
+         * Read all of the edges and detect what area they cover
+         * @param input_hist_file is an ifstream that points to the input file
+         * @return pair<vector of edges that contains histograms, location>
+         */
         std::pair<std::vector<Edge>, std::string> read_edges_alldata(std::ifstream& input_hist_file) {
             std::vector<Edge> result;
             bool reached_end = false;
@@ -514,15 +558,16 @@ namespace katch
 		std::pair<std::vector<Edge>, std::string> read_edges(const std::string& input_file_name, TimeType time_type) {
             // open tge file
 		    std::ifstream input_hist_file(input_file_name);
+            std::vector<Edge> empty;
 
 			if (input_file_name.empty()) {
                 std::cerr << "Empty input file name given.\n";
-				return nullptr;
+				return std::make_pair(std::move(empty), "");
 			}
 			if (!input_hist_file.is_open()) {
                 std::cerr << " ABORT\n";
                 std::cerr << "Unable to open file '" << input_file_name << "'\n";
-				return nullptr;
+                return std::make_pair(std::move(empty), "");
 			}
 
             // file is OK. Start reading it
@@ -540,10 +585,10 @@ namespace katch
             }
             else {
                 std::cout << "Invalid time type selected" << std::endl;
-                return nullptr;
+                return std::make_pair(std::move(empty), "");
             }
 		}
 	}
 }
 
-#endif /* KATCH_HIST_FORMAT_H_ */
+#endif /* HIST_FORMAT_H */

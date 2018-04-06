@@ -19,7 +19,7 @@ void all_day(const std::string &cost_input_file_name) {
     auto edges_and_type = katch::hist_format::read_edges(cost_input_file_name, alldata);
 
     std::cout << edges_and_type.second + "_" + "ALL" << std::endl;
-    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "ALL", (uint32_t)2, (uint32_t)33, 1);
+    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "ALL");
     for (auto &edge : edges_and_type.first)
         _btch_output_file.write_edgecost(std::move(edge), alldata);
     _btch_output_file.close();
@@ -27,7 +27,8 @@ void all_day(const std::string &cost_input_file_name) {
     std::cout << "Done writing" << std::endl;
 }
 
-/* multiple histograms. 5 for weekdays, 1 for weekends
+/**
+ * multiple histograms. 5 for weekdays, 1 for weekends
  * weekdays: mon-fri
  *  00:00 - 07:00 off
  *  07:00 - 08:30 peak
@@ -42,7 +43,7 @@ void peak_vs_off_peak(const std::string &cost_input_file_name) {
     auto edges_and_type = katch::hist_format::read_edges(cost_input_file_name, peak);
 
     std::cout << edges_and_type.second + "_" + "PEAK" << std::endl;
-    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "PEAK", (uint32_t)2, (uint32_t)33, 1);
+    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "PEAK");
     for (auto &edge : edges_and_type.first)
         _btch_output_file.write_edgecost(std::move(edge), peak);
     _btch_output_file.close();
@@ -50,14 +51,18 @@ void peak_vs_off_peak(const std::string &cost_input_file_name) {
     std::cout << "Done writing" << std::endl;
 }
 
-
-// 96 histograms for each of the type of days
+/**
+ * 96 histograms two times:
+ * 96 for weekdays
+ * 96 for weekends
+ * This type will cover very single timeinterval for every single day
+ */
 void weekdays_vs_weekends(const std::string &cost_input_file_name) {
     std::cout << "Reading data file" << std::endl;
     auto edges_and_type  = katch::hist_format::read_edges(cost_input_file_name, days);
 
     std::cout << edges_and_type.second + "_" + "15M" << std::endl;
-    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "15M", (uint32_t)2, (uint32_t)33, 1);
+    katch::btch_format::OutputFile _btch_output_file(edges_and_type.second + "_" + "15M");
     for (auto &edge : edges_and_type.first)
         _btch_output_file.write_edgecost(std::move(edge), days);
     _btch_output_file.close();
@@ -65,12 +70,9 @@ void weekdays_vs_weekends(const std::string &cost_input_file_name) {
     std::cout << "Done writing" << std::endl;
 }
 
-
 int main(int argc, char** argv) {
     /***
      * The first argument should be the path to the input file.
-     * As of now, we are reading the entirety of the input file three times (one time for each graph type).
-     * This could be changed such that only one read would be necessary
      */
     auto cost_input_file_name(argv[1]);
     all_day(cost_input_file_name);

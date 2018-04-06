@@ -1,0 +1,1 @@
+/usr/bin/g++-5   -std=c++11 -fopenmp  -g  -rdynamic CMakeFiles/main_statio.dir/main.cpp.o  -o main_statio 

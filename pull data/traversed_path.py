@@ -104,7 +104,7 @@ def hot_paths(trips: list, x: int, cardinality: int):
         for trip in trips:
             length = len(trip[1])
             if length < y:
-                trips.remove(trip)
+git                 trips.remove(trip)
             else:
                 i = 0
                 while i < length - y + 1:
@@ -172,7 +172,7 @@ def fetch_data(save_to_file: bool, all_data: bool):
         cur.execute("SELECT m.trip_id, m.seg_id "
                     "FROM ( "
                     "   SELECT trip_id "
-                    "   FROM trips "
+                    "   FROM trips_correction "
                     "   GROUP BY trip_id"
                     "   ORDER BY trip_id"
                     ") t "
@@ -199,6 +199,7 @@ def fetch_data(save_to_file: bool, all_data: bool):
     for k, g in groupby(data, lambda x: x[0]):
         groups.append(list(g))
 
+    fixes = 0
     for entry in groups:
         if len(entry) > 1:
             prev_dest = FIRST_ENTRY_VALUE
@@ -212,11 +213,13 @@ def fetch_data(save_to_file: bool, all_data: bool):
                     groups.remove(entry)
                     entry = entry[:-i]
                     i = 0
+                    fixes += 1
                 else:
                     i = i
                     pass
                 prev_dest = split[1]
                 i += 1
+    print(fixes)  # TODO remove me
 
     # map seg_ids to shorter names
     # sorted_data = [shorten(item) for item in data]
@@ -228,6 +231,7 @@ def fetch_data(save_to_file: bool, all_data: bool):
 
     # Save everything
     if save_to_file:
+        print("Saving all_data")
         with open('all_data', 'wb') as f:
             pickle.dump(trips, f, pickle.HIGHEST_PROTOCOL)
 
@@ -235,15 +239,15 @@ def fetch_data(save_to_file: bool, all_data: bool):
 
 
 if __name__ == '__main__':
-    with open('create_frequent_paths', 'rb') as f:
-        X = pickle.load(f)
-    trips, traverse_count = fetch_data(save_to_file=True, all_data=True)
-    #with open('short', 'rb') as f:
+    # with open('create_frequent_paths', 'rb') as f:
     #    X = pickle.load(f)
-    #sorted_data = pickle.load(open("all_data", "rb"))
+    # trips, traverse_count = fetch_data(save_to_file=True, all_data=True)
+    # with open('short', 'rb') as f:
+    #    X = pickle.load(f)
+    trips = pickle.load(open("all_data", "rb"))
 
-    create_frequent_paths_1(trips=trips, min_traversal=traverse_count)
-    hot_paths(trips=trips, x=traverse_count, cardinality=10)
+    create_frequent_paths_1(trips=trips, min_traversal=100)
+    hot_paths(trips=trips, x=100, cardinality=10)
     print("Done")
 
 

@@ -1,0 +1,4 @@
+/home/anders/Documents/small_graph/read_data/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/anders/Documents/small_graph/read_data/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/anders/Documents/small_graph/read_data/cmake-build-debug/CMakeFiles/main_statio.dir
+/home/anders/Documents/small_graph/read_data/cmake-build-debug/CMakeFiles/main.dir
