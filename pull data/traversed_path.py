@@ -104,7 +104,7 @@ def hot_paths(trips: list, x: int, cardinality: int):
         for trip in trips:
             length = len(trip[1])
             if length < y:
-git                 trips.remove(trip)
+                trips.remove(trip)
             else:
                 i = 0
                 while i < length - y + 1:
@@ -241,10 +241,10 @@ def fetch_data(save_to_file: bool, all_data: bool):
 if __name__ == '__main__':
     # with open('create_frequent_paths', 'rb') as f:
     #    X = pickle.load(f)
-    # trips, traverse_count = fetch_data(save_to_file=True, all_data=True)
+    trips, traverse_count = fetch_data(save_to_file=True, all_data=True)
     # with open('short', 'rb') as f:
     #    X = pickle.load(f)
-    trips = pickle.load(open("all_data", "rb"))
+    #trips = pickle.load(open("all_data", "rb"))
 
     create_frequent_paths_1(trips=trips, min_traversal=100)
     hot_paths(trips=trips, x=100, cardinality=10)
