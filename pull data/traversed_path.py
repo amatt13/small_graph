@@ -68,6 +68,10 @@ def fetch_data(save_to_file: bool, all_data: bool = True):
     args = parser.parse_args()
     config = configparser.ConfigParser()
     config.read(args.ini)
+    if args.n is None:
+        name = config.get('DEFAULT', 'name')
+    else:
+        name = args.n
     if args.i is None:
         ip = config.get('DEFAULT', 'ip')
     else:
@@ -97,7 +101,7 @@ def fetch_data(save_to_file: bool, all_data: bool = True):
     traverse_count = int(traverse_count)  # change type to int...
     cardinality = int(cardinality)
 
-    conn = psycopg2.connect(database="au_db", user=user, password=pw, host=ip, port=port)
+    conn = psycopg2.connect(database=name, user=user, password=pw, host=ip, port=port)
     cur = conn.cursor()
     print("Fetching...")
     if all_data:
