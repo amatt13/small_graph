@@ -269,9 +269,11 @@ def start():
     This is just a function that can be called from other files if imported
     Calling main is just as valid
     """
-    trips, traverse_count, cardinality = fetch_data(save_to_file=True, all_data=True)
-    create_frequent_paths_1(trips=trips, min_traversal=traverse_count)
-    hot_paths(trips=trips, min_traversal=traverse_count, cardinality=cardinality)
+    #trips, traverse_count, cardinality = fetch_data(save_to_file=True, all_data=True)
+    with open("all_data", 'rb') as f:
+        trips = pickle.load(f)
+    create_frequent_paths_1(trips=trips, min_traversal=200)
+    hot_paths(trips=trips, min_traversal=200, cardinality=10)
     print("Done")
 
 
