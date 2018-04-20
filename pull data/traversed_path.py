@@ -105,27 +105,13 @@ def fetch_data(save_to_file: bool, all_data: bool = True):
     cur = conn.cursor()
     print("Fetching...")
     if all_data:
-        cur.execute("SELECT m.trip_id, m.seg_id "
-                    "FROM ( "
-                    "   SELECT trip_id "
-                    "   FROM trips_correction "
-                    "   GROUP BY trip_id"
-                    "   ORDER BY trip_id"
-                    ") t "
-                    "JOIN trips m "
-                    "ON m.trip_id = t.trip_id")
+        cur.execute("SELECT *"
+                    "FROM trips_correction ")
     else:
-        cur.execute("SELECT m.trip_id, m.seg_id "
-                    "FROM ( "
-                    "   SELECT trip_id "
-                    "   FROM trips_correction "
-                    "   WHERE trip_id >= 295000"
-                    "   AND trip_id <=   300000"
-                    "   GROUP BY trip_id"
-                    "   ORDER BY trip_id"
-                    ") t "
-                    "JOIN trips m "
-                    "ON m.trip_id = t.trip_id")
+        cur.execute("SELECT *"
+                    "FROM trips_correction "
+                    "WHERE trip_id >= 295000 "
+                    "AND trip_id <=   300000 ")
     data = cur.fetchall()
     print("Data collected...\nMapping...")
 
@@ -134,25 +120,6 @@ def fetch_data(save_to_file: bool, all_data: bool = True):
     groups = []
     for k, g in groupby(data, lambda x: x[0]):
         groups.append(list(g))
-
-    # Fix mistakes in the DB
-    # Some trips have "teleporting" vehicles
-    # Whenever a vehicle teleports, a new trip is created
-    for entry in groups:
-        if len(entry) > 1:
-            prev_dest = FIRST_ENTRY_VALUE
-            i = 0
-            for edge in reversed(entry):
-                split = edge[1].split('-')
-                start = split[0]
-                if start != prev_dest and prev_dest != FIRST_ENTRY_VALUE:
-                    groups.append(entry[-i:])
-                    groups.append(entry[:-i])
-                    groups.remove(entry)
-                    entry = entry[:-i]
-                    i = 0
-                prev_dest = split[1]
-                i += 1
 
     # map seg_ids to shorter names (easier debugging)
     # sorted_data = [shorten(item) for item in data]
@@ -240,9 +207,6 @@ def hot_paths(trips: list, min_traversal: int, cardinality: int):
         write_frequent(trip_counter, min_traversal, y)  # save trips in file
         trip_counter.clear()
         y += 1
-    # Done, now go save everything (debugging)
-    # with open('create_frequent_paths', 'wb') as f:
-    #     pickle.dump(frequent_paths, f, pickle.HIGHEST_PROTOCOL)
 
 
 def write_frequent(trip_counter: dict, min_traversal: int, cardinality: int):
@@ -269,11 +233,9 @@ def start():
     This is just a function that can be called from other files if imported
     Calling main is just as valid
     """
-    #trips, traverse_count, cardinality = fetch_data(save_to_file=True, all_data=True)
-    with open("all_data", 'rb') as f:
-        trips = pickle.load(f)
-    create_frequent_paths_1(trips=trips, min_traversal=200)
-    hot_paths(trips=trips, min_traversal=200, cardinality=10)
+    trips, traverse_count, cardinality = fetch_data(save_to_file=True, all_data=True)
+    create_frequent_paths_1(trips=trips, min_traversal=traverse_count)
+    hot_paths(trips=trips, min_traversal=traverse_count, cardinality=cardinality)
     print("Done")
 
 
